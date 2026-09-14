@@ -14,6 +14,7 @@ This repository demonstrates external UI automation, positive and negative testi
 > **Separate project:** FinTrack is the application under test. This repository contains only the external Selenium automation suite and does not contain the FinTrack application source code.
 
 - [FinTrack application repository](https://github.com/garrib10/finance-operations-dashboard)
+
 - [Deployed FinTrack application](https://finance-operations-dashboard.vercel.app/)
 
 ## Portfolio Story
@@ -40,19 +41,45 @@ WebDriverManager is not currently required because Selenium Manager provides aut
 ## Project Highlights
 
 - External end-to-end testing against the deployed FinTrack interface
+
 - Page Object Model with focused page and component classes
+
 - Centralized WebDriver creation and JUnit browser lifecycle management
+
 - Fresh browser session for every test
+
 - Explicit waits instead of `Thread.sleep()`
+
 - Stable IDs, semantic elements, accessible names, and `data-testid` selectors
+
 - Assertions kept in test classes rather than hidden inside Page Objects
+
 - Positive and negative authentication coverage
+
 - Parameterized protected-route testing
+
 - Login-session persistence verification after browser refresh
+
 - Logout and post-logout authorization verification
+
 - Duplicate-registration and browser-validation coverage
+
+- Authenticated income and expense transaction workflows
+
+- Transaction creation, verification, editing, cancellation, updating, and deletion
+
+- Description search and transaction-type filtering
+
+- Required-field and minimum-amount validation
+
+- Special-character boundary coverage for transaction descriptions
+
+- Unique test data with automatic cleanup from the deployed application
+
 - Environment-based configuration with credentials excluded from Git
+
 - Repeatable local execution through Maven
+
 - Human-readable and machine-readable Surefire reports
 
 ## Application Under Test
@@ -65,7 +92,6 @@ flowchart TD
     B["FinTrack Frontend — Vercel"]
     C["FinTrack Backend — Railway"]
     D["MySQL — Railway"]
-
     A --> B
     B --> C
     C --> D
@@ -82,9 +108,13 @@ Tests interact with FinTrack through the browser rather than directly calling it
 ### Authentication
 
 - Registered user can log in
+
 - Authenticated session survives browser refresh
+
 - Invalid password displays the expected error
+
 - User can log out
+
 - Logged-out user cannot revisit a protected route
 
 ### Protected Routes
@@ -92,36 +122,94 @@ Tests interact with FinTrack through the browser rather than directly calling it
 Unauthenticated users are redirected from:
 
 - Dashboard
+
 - Transactions
+
 - Budgets
 
 ### Registration Validation
 
 - Duplicate email registration is rejected
+
 - Malformed email is blocked by browser-native validation
 
 Successful registration is not part of routine regression execution because FinTrack does not currently provide account deletion. This prevents automated tests from continually creating permanent users.
 
+### Transactions
+
+- Create and verify an income transaction
+
+- Create and verify an expense transaction
+
+- Cancel an edit without changing the original transaction
+
+- Update a transaction and verify the new values
+
+- Delete a transaction and verify that it is removed
+
+- Preserve apostrophes, quotation marks, and ampersands in descriptions
+
+### Transaction Search and Filtering
+
+- Search using a unique transaction description
+
+- Search using a shared partial description
+
+- Filter matching results by transaction type
+
+- Reset filters before cleanup and subsequent operations
+
+### Transaction Validation
+
+- Reject an amount below the minimum value
+
+- Reject a missing required description
+
+- Verify invalid submissions remain on the transaction page
+
+Transaction scenarios generate unique descriptions for every execution and remove successfully created records in cleanup blocks. This keeps tests independent while safely exercising the deployed application and persistent database.
+
 ## Testing and Quality
 
-| Test area               |                                      Current result |
-| ----------------------- | --------------------------------------------------: |
-| Smoke                   |                                      1 passing test |
-| Authentication          |                                     3 passing tests |
-| Protected routes        |                  3 passing parameterized executions |
-| Registration validation |                                     2 passing tests |
-| **Total**               | **9 passing test executions across 4 test classes** |
+| Test area               |                                       Current result |
+| ----------------------- | ---------------------------------------------------: |
+| Smoke                   |                                       1 passing test |
+| Authentication          |                                      3 passing tests |
+| Protected routes        |                   3 passing parameterized executions |
+| Registration validation |                                      2 passing tests |
+| Transaction workflows   |                                      4 passing tests |
+| Transaction filtering   |                                       1 passing test |
+| Transaction validation  |                                      2 passing tests |
+| **Total**               | **16 passing test executions across 7 test classes** |
 
 The suite currently verifies:
 
 - Application availability through the UI
+
 - Successful and unsuccessful authentication
+
 - JWT-backed session persistence after refresh
+
 - Logout behavior
+
 - Protected-route enforcement
+
 - Duplicate-email handling
+
 - Browser-native form validation
+
+- Income and expense transaction persistence
+
+- Transaction editing, cancellation, updating, and deletion
+
+- Description search and transaction-type filtering
+
+- Transaction form validation and special-character handling
+
+- Unique test-data generation and post-test cleanup
+
 - Browser setup and teardown
+
 - Environment-based credential management
 
 Run the complete suite:
@@ -145,6 +233,7 @@ target/surefire-reports
 The report directory contains:
 
 - Plain-text developer summaries
+
 - XML reports suitable for CI processing and artifact upload
 
 End-to-end code-coverage percentages are not reported because this suite interacts with FinTrack externally and does not instrument the application source code.
@@ -156,10 +245,15 @@ Portfolio evidence will be added incrementally as the suite develops.
 Planned evidence includes:
 
 - Successful local Maven regression execution
+
 - Headed Chrome automation against deployed FinTrack
+
 - Failure screenshots captured automatically by the test framework
+
 - Successful GitHub Actions workflow execution
+
 - Pull-request status checks
+
 - Maven Surefire reports uploaded as CI artifacts
 
 Screenshots will be stored under:
@@ -179,6 +273,7 @@ Actual image links will be added after the files exist so the README does not co
 | `src/test/java/dev/portfolio/fintrack/components` | Reusable UI components shared across pages                               |
 | `src/test/java/dev/portfolio/fintrack/config`     | Environment and test configuration                                       |
 | `src/test/java/dev/portfolio/fintrack/core`       | WebDriver factory and JUnit test lifecycle                               |
+| `src/test/java/dev/portfolio/fintrack/data`       | Unique automation test-data generation                                   |
 | `src/test/java/dev/portfolio/fintrack/pages`      | Page Objects containing selectors, waits, and UI interactions            |
 | `src/test/java/dev/portfolio/fintrack/tests`      | JUnit test classes containing scenarios and assertions                   |
 | `target/surefire-reports`                         | Generated local test reports; excluded from Git                          |
@@ -193,18 +288,25 @@ src/test/java/dev/portfolio/fintrack/
 ├── config/
 │   └── TestConfig.java
 ├── core/
+│   ├── AuthenticatedTest.java
 │   ├── BaseTest.java
 │   └── DriverFactory.java
+├── data/
+│   └── TestData.java
 ├── pages/
 │   ├── BasePage.java
 │   ├── DashboardPage.java
 │   ├── LoginPage.java
-│   └── RegisterPage.java
+│   ├── RegisterPage.java
+│   └── TransactionsPage.java
 └── tests/
     ├── AuthenticationTest.java
     ├── FinTrackSmokeTest.java
     ├── ProtectedRouteTest.java
-    └── RegistrationTest.java
+    ├── RegistrationTest.java
+    ├── TransactionFilterTest.java
+    ├── TransactionTest.java
+    └── TransactionValidationTest.java
 ```
 
 ## Automation Design
@@ -214,14 +316,19 @@ src/test/java/dev/portfolio/fintrack/
 Page Objects contain:
 
 - Element selectors
+
 - Explicit waits
+
 - Page-specific interactions
+
 - Page-state accessors
 
 Test classes contain:
 
 - Test scenarios
+
 - Expected outcomes
+
 - JUnit assertions
 
 This separation keeps tests readable while localizing UI-maintenance changes.
@@ -236,15 +343,27 @@ Each test begins with an isolated browser session and does not depend on authent
 
 Tests do not depend on execution order. Authentication tests reuse one dedicated fictional account, while permanent account creation is excluded from routine execution.
 
+Transaction tests create uniquely named records and use `finally` cleanup blocks so created data is removed even when an assertion fails. Test runs are currently serial because the suite operates against one shared deployed automation account.
+
 ### Explicit Waits
 
 The suite waits for observable browser conditions, including:
 
 - Expected URL paths
+
 - Visible elements
+
 - Clickable controls
+
 - Authenticated navigation
+
 - Loaded dashboard content
+
+- Transaction form resets after successful submission
+
+- Search and filter results
+
+- Transaction rows appearing or disappearing after mutations
 
 Fixed delays such as `Thread.sleep()` are not used.
 
@@ -253,9 +372,13 @@ Fixed delays such as `Thread.sleep()` are not used.
 The suite prefers:
 
 1. Stable element IDs
+
 2. Released `data-testid` attributes
+
 3. Semantic HTML and accessible names
+
 4. Scoped CSS selectors
+
 5. Short, meaning-based XPath only when Selenium lacks a suitable role locator
 
 DOM-position-based selectors and long absolute XPath expressions are avoided.
@@ -263,13 +386,16 @@ DOM-position-based selectors and long absolute XPath expressions are avoided.
 ## Local Prerequisites
 
 - Java 21
+
 - Maven 3.9 or later
+
 - Google Chrome
 
 Verify the environment:
 
 ```bash
 java -version
+
 mvn -version
 ```
 
@@ -287,8 +413,11 @@ Update `.env` with a dedicated fictional FinTrack automation account:
 
 ```bash
 export FINTRACK_BASE_URL='https://finance-operations-dashboard.vercel.app'
+
 export FINTRACK_TEST_EMAIL='replace-with-dedicated-test-email'
+
 export FINTRACK_TEST_PASSWORD='replace-with-dedicated-test-password'
+
 export FINTRACK_ALLOW_REGISTRATION='false'
 ```
 
@@ -306,6 +435,7 @@ Run all tests from a clean build:
 
 ```bash
 source .env
+
 mvn clean test
 ```
 
@@ -319,6 +449,12 @@ Run the protected-route tests:
 
 ```bash
 mvn -Dtest=ProtectedRouteTest test
+```
+
+Run all transaction test classes:
+
+```bash
+mvn -Dtest="Transaction*" test
 ```
 
 The browser currently runs visibly during local execution. Headless execution will be added before GitHub Actions integration.
@@ -342,15 +478,21 @@ Generated reports are excluded from Git because they are recreated during every 
 ## Roadmap
 
 - [x] Day 1 — Maven, Selenium, JUnit, and first browser test
+
 - [x] Day 2 — Configuration, Page Object Model, and authentication automation
-- [ ] Day 3 — Transaction workflows
+
+- [x] Day 3 — Transaction workflows
+
 - [ ] Day 4 — Budget and dashboard workflows
+
 - [ ] Day 5 — Reliability, tagging, screenshots, and headless execution
+
 - [ ] Day 6 — GitHub Actions and automated PR checks
+
 - [ ] Day 7 — Final documentation, evidence, and v1.0 release
 
 ## Current Status
 
 Version `1.0.0-SNAPSHOT` is under active development.
 
-Authentication automation and the initial Page Object architecture are complete. Transaction, budget, dashboard, reliability, CI, and final release work will be added incrementally.
+Authentication and transaction automation are complete with 16 passing test executions across seven test classes. Budget, dashboard, reliability, CI, and final release work will be added incrementally.

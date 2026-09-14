@@ -8,6 +8,7 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import dev.portfolio.fintrack.config.TestConfig;
+import java.util.function.Function;
 
 public abstract class BasePage {
 
@@ -66,6 +67,10 @@ public abstract class BasePage {
     }
 
     protected String readDomProperty(By locator, String propertyName) {
-    return waitUntilVisible(locator).getDomProperty(propertyName);
-}
+        return waitUntilVisible(locator).getDomProperty(propertyName);
+    }
+
+    protected <T> T waitUntil(Function<WebDriver, T> condition) {
+        return wait.until(condition);
+    }
 }
