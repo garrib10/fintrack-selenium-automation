@@ -1,0 +1,25 @@
+# Maven build output
+target/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+.classpath
+.project
+.settings/
+
+# macOS files
+.DS_Store
+
+# Logs
+*.log
+
+# Generated test evidence
+screenshots/
+test-results/
