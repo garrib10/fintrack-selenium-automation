@@ -9,10 +9,14 @@ import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.BaseTest;
 import dev.portfolio.fintrack.pages.DashboardPage;
 import dev.portfolio.fintrack.pages.LoginPage;
+import org.junit.jupiter.api.Tag;
 
+@Tag("authentication")
+@Tag("regression")
 class AuthenticationTest extends BaseTest {
 
         @Test
+        @Tag("smoke")
         void registeredUserCanLoginAndRemainAuthenticatedAfterRefresh() {
                 LoginPage loginPage = new LoginPage(driver).open();
 

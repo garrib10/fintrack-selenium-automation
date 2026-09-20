@@ -8,7 +8,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.BaseTest;
 import dev.portfolio.fintrack.pages.LoginPage;
+import org.junit.jupiter.api.Tag;
 
+@Tag("authentication")
+@Tag("regression")
 class ProtectedRouteTest extends BaseTest {
 
     @ParameterizedTest(name = "Unauthenticated visit to {0} redirects to login")

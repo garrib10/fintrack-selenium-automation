@@ -13,7 +13,12 @@ import dev.portfolio.fintrack.pages.DashboardPage;
 import dev.portfolio.fintrack.pages.DashboardPage.DashboardBudget;
 import dev.portfolio.fintrack.pages.DashboardPage.DashboardSummary;
 import dev.portfolio.fintrack.pages.TransactionsPage;
+import org.junit.jupiter.api.Tag;
 
+@Tag("budgets")
+@Tag("dashboard")
+@Tag("integration")
+@Tag("regression")
 class BudgetDashboardIntegrationTest extends AuthenticatedTest {
 
     private static final BigDecimal BUDGET_LIMIT =

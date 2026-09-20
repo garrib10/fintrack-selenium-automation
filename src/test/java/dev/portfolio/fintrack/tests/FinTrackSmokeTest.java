@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
 import dev.portfolio.fintrack.core.BaseTest;
 import dev.portfolio.fintrack.pages.LoginPage;
+import org.junit.jupiter.api.Tag;
 
+@Tag("smoke")
+@Tag("regression")
 class FinTrackSmokeTest extends BaseTest {
 
     @Test

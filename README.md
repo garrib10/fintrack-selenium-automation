@@ -30,10 +30,10 @@ This repository demonstrates external UI automation, positive and negative testi
 | UI automation                   | Selenium WebDriver 4.49.0                 |
 | Test framework                  | JUnit 5.14.4                              |
 | Build and dependency management | Maven 3.9.16                              |
-| Browser                         | Google Chrome                             |
+| Browser                         | Google Chrome in headed or headless mode  |
 | Driver management               | Selenium Manager                          |
 | Test architecture               | Page Object Model                         |
-| Test reporting                  | Maven Surefire text and XML reports       |
+| Test reporting                  | Surefire reports and failure artifacts    |
 | Configuration                   | Environment variables and `.env` template |
 | Continuous integration          | GitHub Actions planned for Day 6          |
 
@@ -94,6 +94,14 @@ WebDriverManager is not currently required because Selenium Manager provides aut
 - Repeatable local execution through Maven
 
 - Human-readable and machine-readable Surefire reports
+
+- Configurable headed and headless Chrome execution
+
+- JUnit tags for focused smoke, feature, integration, and regression runs
+
+- Automatic screenshot, page-source, URL, and stack-trace capture on failure
+
+- Sequential execution for workflows that share one deployed automation account
 
 ## Application Under Test
 
@@ -228,7 +236,7 @@ The integration workflow records dashboard and budget baselines before creating 
 
 | Test area                 |                                        Current result |
 | ------------------------- | ----------------------------------------------------: |
-| Smoke                     |                                        1 passing test |
+| Availability smoke        |                                        1 passing test |
 | Authentication            |                                       3 passing tests |
 | Protected routes          |                    3 passing parameterized executions |
 | Registration validation   |                                       2 passing tests |
@@ -240,6 +248,8 @@ The integration workflow records dashboard and budget baselines before creating 
 | Dashboard summary         |                                        1 passing test |
 | Cross-feature integration |                                        1 passing test |
 | **Total**                 | **22 passing test executions across 11 test classes** |
+
+The `smoke` tag selects three critical checks covering application availability, successful authentication, and dashboard loading. Tagged selections overlap the feature totals above and do not increase the 22-test regression count.
 
 The suite currently verifies:
 
@@ -313,7 +323,25 @@ End-to-end code-coverage percentages are not reported because this suite interac
 
 ## Test Evidence and Screenshots
 
-Portfolio evidence will be added incrementally as the suite develops.
+The framework automatically captures diagnostic evidence whenever a test fails.
+
+Failure evidence is written to:
+
+```text
+target/test-artifacts/<TestClass>/
+```
+
+Each failed test can produce:
+
+- A PNG browser screenshot
+
+- An HTML page-source snapshot
+
+- A text file containing the test name, current URL, and failure stack trace
+
+These generated files are excluded from Git. They are intended for local diagnosis and future CI artifact upload.
+
+Portfolio evidence will continue to be added as the suite develops.
 
 Planned evidence includes:
 
@@ -321,7 +349,7 @@ Planned evidence includes:
 
 - Headed Chrome automation against deployed FinTrack
 
-- Failure screenshots captured automatically by the test framework
+- Automatic failure screenshots and diagnostic artifacts
 
 - Successful GitHub Actions workflow execution
 
@@ -350,6 +378,7 @@ Actual image links will be added after the files exist so the README does not co
 | `src/test/java/dev/portfolio/fintrack/pages`      | Page Objects containing selectors, waits, and UI interactions            |
 | `src/test/java/dev/portfolio/fintrack/tests`      | JUnit test classes containing scenarios and assertions                   |
 | `target/surefire-reports`                         | Generated local test reports; excluded from Git                          |
+| `target/test-artifacts`                           | Generated failure screenshots and diagnostics; excluded from Git         |
 | `docs/images`                                     | Portfolio screenshots and test evidence added later                      |
 
 Current Java structure:
@@ -363,7 +392,8 @@ src/test/java/dev/portfolio/fintrack/
 |-- core/
 |   |-- AuthenticatedTest.java
 |   |-- BaseTest.java
-|   `-- DriverFactory.java
+|   |-- DriverFactory.java
+|   `-- FailureEvidenceExtension.java
 |-- data/
 |   `-- TestData.java
 |-- pages/
@@ -413,9 +443,11 @@ This separation keeps tests readable while localizing UI-maintenance changes.
 
 ### WebDriver Lifecycle
 
-`DriverFactory` creates the browser. `BaseTest` creates a new driver before every test and closes it afterward.
+`DriverFactory` creates Chrome in headed mode by default and supports headless execution through configuration. `BaseTest` creates a new driver before every test and closes it afterward.
 
 Each test begins with an isolated browser session and does not depend on authentication state left by another test.
+
+`FailureEvidenceExtension` runs before browser teardown when a test fails, allowing it to capture the active browser state without masking the original failure.
 
 ### Test Independence
 
@@ -452,6 +484,22 @@ The suite waits for observable browser conditions, including:
 - Dashboard summaries and budget-progress cards loading
 
 Fixed delays such as `Thread.sleep()` are not used.
+
+### Test Tags
+
+JUnit tags support focused execution without maintaining separate suites:
+
+| Tag              | Scope                                                     |
+| ---------------- | --------------------------------------------------------- |
+| `smoke`          | Availability, successful login, and dashboard loading     |
+| `authentication` | Login, logout, registration, and protected routes         |
+| `transactions`   | Transaction workflows, filtering, and validation          |
+| `budgets`        | Budget workflows, validation, and related integration     |
+| `dashboard`      | Dashboard summary and cross-feature dashboard behavior    |
+| `integration`    | Cross-feature budget, transaction, and dashboard workflow |
+| `regression`     | Complete automated regression coverage                    |
+
+The suite remains sequential because several workflows share the same deployed automation account and persistent test data.
 
 ### Selector Strategy
 
@@ -507,6 +555,8 @@ export FINTRACK_TEST_PASSWORD='replace-with-dedicated-test-password'
 export FINTRACK_ALLOW_REGISTRATION='false'
 
 export FINTRACK_TEST_BUDGET_CATEGORY='Travel'
+
+export FINTRACK_HEADLESS='false'
 ```
 
 Load the values into the current terminal:
@@ -533,6 +583,32 @@ Run one test class:
 mvn -Dtest=AuthenticationTest test
 ```
 
+Run the complete suite headlessly:
+
+```bash
+mvn clean test -Dheadless=true
+```
+
+Run the tagged smoke selection headlessly:
+
+```bash
+mvn -Dgroups=smoke -Dheadless=true test
+```
+
+Run a feature tag:
+
+```bash
+mvn -Dgroups=transactions test
+
+mvn -Dgroups=budgets test
+```
+
+Run the complete regression tag:
+
+```bash
+mvn -Dgroups=regression -Dheadless=true test
+```
+
 Run the protected-route tests:
 
 ```bash
@@ -551,7 +627,7 @@ Run all budget and dashboard test classes:
 mvn -Dtest=BudgetTest,BudgetValidationTest,DashboardTest,BudgetDashboardIntegrationTest test
 ```
 
-The browser currently runs visibly during local execution. Headless execution will be added before GitHub Actions integration.
+The browser runs visibly by default. The `-Dheadless=true` Maven property overrides `FINTRACK_HEADLESS` for the current command.
 
 ## Test Reports
 
@@ -569,24 +645,32 @@ cat target/surefire-reports/*.txt
 
 Generated reports are excluded from Git because they are recreated during every test run. GitHub Actions will upload them as temporary workflow artifacts once CI is configured.
 
+Failure diagnostics are generated at:
+
+```text
+target/test-artifacts
+```
+
+Both generated directories are removed by `mvn clean`.
+
 ## Roadmap
 
-- [x] Day 1 — Maven, Selenium, JUnit, and first browser test
+- [x] Day 1 - Maven, Selenium, JUnit, and first browser test
 
-- [x] Day 2 — Configuration, Page Object Model, and authentication automation
+- [x] Day 2 - Configuration, Page Object Model, and authentication automation
 
-- [x] Day 3 — Transaction workflows
+- [x] Day 3 - Transaction workflows
 
-- [x] Day 4 — Budget and dashboard workflows
+- [x] Day 4 - Budget and dashboard workflows
 
-- [ ] Day 5 — Reliability, tagging, screenshots, and headless execution
+- [x] Day 5 - Reliability, tagging, screenshots, and headless execution
 
-- [ ] Day 6 — GitHub Actions and automated PR checks
+- [ ] Day 6 - GitHub Actions and automated PR checks
 
-- [ ] Day 7 — Final documentation, evidence, and v1.0 release
+- [ ] Day 7 - Final documentation, evidence, and v1.0 release
 
 ## Current Status
 
 Version `1.0.0-SNAPSHOT` is under active development.
 
-Authentication, transaction, budget, dashboard, and cross-feature integration automation are complete with 22 passing test executions across 11 test classes. Reliability, tagging, failure evidence, headless execution, CI, and final release work will be added incrementally.
+Authentication, transaction, budget, dashboard, and cross-feature integration automation are complete with 22 passing test executions across 11 test classes. The suite supports headed and headless execution, focused JUnit tags, explicit-wait-based synchronization, and automatic failure evidence. GitHub Actions, automated pull-request checks, final portfolio evidence, and the v1.0 release remain.

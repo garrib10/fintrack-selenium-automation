@@ -22,7 +22,7 @@ public final class LoginPage extends BasePage {
 
     public LoginPage waitUntilLoaded() {
         waitUntilVisible(EMAIL_INPUT);
-        waitUntilVisible(EMAIL_INPUT);
+        waitUntilVisible(PASSWORD_INPUT);
         return this;
     }
 
