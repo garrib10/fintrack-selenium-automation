@@ -4,9 +4,11 @@
 ![Selenium 4.49.0](https://img.shields.io/badge/Selenium-4.49.0-43B02A?logo=selenium&logoColor=white)
 ![JUnit 5.14.4](https://img.shields.io/badge/JUnit_5-5.14.4-25A162?logo=junit5&logoColor=white)
 ![Maven 3.9.16](https://img.shields.io/badge/Maven-3.9.16-C71A36?logo=apachemaven&logoColor=white)
+[![Selenium Regression](https://github.com/garrib10/fintrack-selenium-automation/actions/workflows/selenium-regression.yml/badge.svg?branch=main)](https://github.com/garrib10/fintrack-selenium-automation/actions/workflows/selenium-regression.yml)
 ![Tests](https://img.shields.io/badge/Tests-22_Passing-brightgreen)
+![Version](https://img.shields.io/badge/Version-1.0.0-1D76DB)
 ![Page Object Model](https://img.shields.io/badge/Page_Object_Model-Architecture-6F42C1)
-![Status](https://img.shields.io/badge/Status-In_Development-1D76DB)
+![Status](https://img.shields.io/badge/Status-Released-brightgreen)
 
 A standalone Selenium end-to-end regression suite for the deployed FinTrack personal finance application.
 
@@ -35,7 +37,7 @@ This repository demonstrates external UI automation, positive and negative testi
 | Test architecture               | Page Object Model                         |
 | Test reporting                  | Surefire reports and failure artifacts    |
 | Configuration                   | Environment variables and `.env` template |
-| Continuous integration          | GitHub Actions planned for Day 6          |
+| Continuous integration          | GitHub Actions                            |
 
 WebDriverManager is not currently required because Selenium Manager provides automatic browser-driver discovery and management.
 
@@ -102,6 +104,12 @@ WebDriverManager is not currently required because Selenium Manager provides aut
 - Automatic screenshot, page-source, URL, and stack-trace capture on failure
 
 - Sequential execution for workflows that share one deployed automation account
+
+- Automated headless regression checks for pull requests and `main`
+
+- Required Selenium status check before pull-request merging
+
+- Surefire reports retained as downloadable GitHub Actions artifacts
 
 ## Application Under Test
 
@@ -339,36 +347,27 @@ Each failed test can produce:
 
 - A text file containing the test name, current URL, and failure stack trace
 
-These generated files are excluded from Git. They are intended for local diagnosis and future CI artifact upload.
+These generated files are excluded from Git. They support local diagnosis and are uploaded by GitHub Actions when a CI test fails.
 
-Portfolio evidence will continue to be added as the suite develops.
+### Successful GitHub Actions Regression
 
-Planned evidence includes:
+The GitHub Actions workflow runs the complete Selenium regression suite in headless Chrome and uploads the Surefire results after every run.
 
-- Successful local Maven regression execution
+![Successful GitHub Actions Selenium regression](docs/images/selenium-regression-success.png)
 
-- Headed Chrome automation against deployed FinTrack
+The workflow summary, downloadable Surefire reports, and automatic failure artifacts provide repeatable test evidence without committing generated reports to the repository.
 
-- Automatic failure screenshots and diagnostic artifacts
+### Pull Request Quality Gates
 
-- Successful GitHub Actions workflow execution
+The v1.0.0 release passed CodeQL security analysis and the required Selenium regression check before merging.
 
-- Pull-request status checks
-
-- Maven Surefire reports uploaded as CI artifacts
-
-Screenshots will be stored under:
-
-```text
-docs/images
-```
-
-Actual image links will be added after the files exist so the README does not contain broken placeholders.
+![Successful pull request checks](docs/images/pr-required-checks.png)
 
 ## Project Structure
 
 | Path                                              | Purpose                                                                  |
 | ------------------------------------------------- | ------------------------------------------------------------------------ |
+| `.github/workflows/selenium-regression.yml`       | Required headless regression workflow for pull requests and `main`       |
 | `.env.example`                                    | Safe template documenting required environment variables                 |
 | `pom.xml`                                         | Maven project, dependency, Java, compiler, and test-runner configuration |
 | `src/test/java/dev/portfolio/fintrack/components` | Reusable UI components shared across pages                               |
@@ -379,7 +378,7 @@ Actual image links will be added after the files exist so the README does not co
 | `src/test/java/dev/portfolio/fintrack/tests`      | JUnit test classes containing scenarios and assertions                   |
 | `target/surefire-reports`                         | Generated local test reports; excluded from Git                          |
 | `target/test-artifacts`                           | Generated failure screenshots and diagnostics; excluded from Git         |
-| `docs/images`                                     | Portfolio screenshots and test evidence added later                      |
+| `docs/images`                                     | Portfolio screenshots and continuous-integration evidence                |
 
 Current Java structure:
 
@@ -629,6 +628,36 @@ mvn -Dtest=BudgetTest,BudgetValidationTest,DashboardTest,BudgetDashboardIntegrat
 
 The browser runs visibly by default. The `-Dheadless=true` Maven property overrides `FINTRACK_HEADLESS` for the current command.
 
+## Continuous Integration
+
+The workflow at `.github/workflows/selenium-regression.yml` runs automatically for:
+
+- Pull requests targeting `main`
+
+- Pushes to `main`
+
+- Manually requested workflow runs
+
+The workflow:
+
+1. Checks out the repository with read-only content permissions.
+
+2. Configures Eclipse Temurin Java 21 and Maven dependency caching.
+
+3. Confirms the Java, Maven, and Chrome versions available on the runner.
+
+4. Validates that required repository secrets and variables are configured.
+
+5. Runs all 22 Selenium tests in headless Chrome.
+
+6. Uploads Maven Surefire text and XML reports after every run.
+
+7. Uploads screenshots, page source, and failure details when a test fails.
+
+Overlapping runs on the same branch are cancelled so only the newest commit continues testing. The Selenium regression job is configured as a required status check for pull requests targeting `main`.
+
+CI configuration uses GitHub repository secrets for the automation email and password. Non-sensitive values such as the base URL and budget category use repository variables. Secret values are never stored in this repository or printed by the workflow.
+
 ## Test Reports
 
 Maven Surefire generates results in:
@@ -643,7 +672,7 @@ View the readable test summaries:
 cat target/surefire-reports/*.txt
 ```
 
-Generated reports are excluded from Git because they are recreated during every test run. GitHub Actions will upload them as temporary workflow artifacts once CI is configured.
+Generated reports are excluded from Git because they are recreated during every test run. GitHub Actions uploads the Surefire reports as downloadable workflow artifacts retained for 14 days.
 
 Failure diagnostics are generated at:
 
@@ -653,24 +682,24 @@ target/test-artifacts
 
 Both generated directories are removed by `mvn clean`.
 
-## Roadmap
-
-- [x] Day 1 - Maven, Selenium, JUnit, and first browser test
-
-- [x] Day 2 - Configuration, Page Object Model, and authentication automation
-
-- [x] Day 3 - Transaction workflows
-
-- [x] Day 4 - Budget and dashboard workflows
-
-- [x] Day 5 - Reliability, tagging, screenshots, and headless execution
-
-- [ ] Day 6 - GitHub Actions and automated PR checks
-
-- [ ] Day 7 - Final documentation, evidence, and v1.0 release
-
 ## Current Status
 
-Version `1.0.0-SNAPSHOT` is under active development.
+Version `1.0.0` is the initial released regression suite.
 
-Authentication, transaction, budget, dashboard, and cross-feature integration automation are complete with 22 passing test executions across 11 test classes. The suite supports headed and headless execution, focused JUnit tags, explicit-wait-based synchronization, and automatic failure evidence. GitHub Actions, automated pull-request checks, final portfolio evidence, and the v1.0 release remain.
+Authentication, transaction, budget, dashboard, and cross-feature integration automation are complete with 22 passing test executions across 11 test classes. The suite supports headed and headless execution, focused JUnit tags, explicit-wait-based synchronization, automatic failure evidence, GitHub Actions execution, downloadable reports, and required pull-request checks.
+
+## Future Enhancements
+
+Future Selenium releases can evolve independently from the FinTrack application version. Potential improvements include:
+
+- Additional browser coverage
+
+- Expanded regression coverage for new FinTrack workflows
+
+- Scheduled regression execution
+
+- Enhanced test-result summaries and historical reporting
+
+- Additional accessibility-focused browser checks
+
+Major architectural changes can be reserved for a future Selenium v2.0 release.
