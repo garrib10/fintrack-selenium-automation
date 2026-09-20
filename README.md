@@ -357,6 +357,12 @@ The GitHub Actions workflow runs the complete Selenium regression suite in headl
 
 The workflow summary, downloadable Surefire reports, and automatic failure artifacts provide repeatable test evidence without committing generated reports to the repository.
 
+### Pull Request Quality Gates
+
+The v1.0.0 release passed CodeQL security analysis and the required Selenium regression check before merging.
+
+![Successful pull request checks](docs/images/pr-required-checks.png)
+
 ## Project Structure
 
 | Path                                              | Purpose                                                                  |
