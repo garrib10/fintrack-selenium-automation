@@ -4,6 +4,7 @@
 ![Selenium 4.49.0](https://img.shields.io/badge/Selenium-4.49.0-43B02A?logo=selenium&logoColor=white)
 ![JUnit 5.14.4](https://img.shields.io/badge/JUnit_5-5.14.4-25A162?logo=junit5&logoColor=white)
 ![Maven 3.9.16](https://img.shields.io/badge/Maven-3.9.16-C71A36?logo=apachemaven&logoColor=white)
+![Tests](https://img.shields.io/badge/Tests-22_Passing-brightgreen)
 ![Page Object Model](https://img.shields.io/badge/Page_Object_Model-Architecture-6F42C1)
 ![Status](https://img.shields.io/badge/Status-In_Development-1D76DB)
 
@@ -74,6 +75,18 @@ WebDriverManager is not currently required because Selenium Manager provides aut
 
 - Special-character boundary coverage for transaction descriptions
 
+- Budget creation, verification, editing, cancellation, updating, and deletion
+
+- Budget validation for missing categories, non-positive limits, and duplicate periods
+
+- Dashboard financial-summary verification with balance calculations
+
+- Cross-feature budget, transaction, and dashboard integration testing
+
+- Baseline-and-delta assertions that remain stable with existing account data
+
+- Dynamic budget periods and a dedicated automation category
+
 - Unique test data with automatic cleanup from the deployed application
 
 - Environment-based configuration with credentials excluded from Git
@@ -89,9 +102,9 @@ The Selenium suite interacts with FinTrack through its deployed frontend.
 ```mermaid
 flowchart TD
     A["Selenium Automation Suite"]
-    B["FinTrack Frontend — Vercel"]
-    C["FinTrack Backend — Railway"]
-    D["MySQL — Railway"]
+    B["FinTrack Frontend - Vercel"]
+    C["FinTrack Backend - Railway"]
+    D["MySQL - Railway"]
     A --> B
     B --> C
     C --> D
@@ -169,18 +182,64 @@ Successful registration is not part of routine regression execution because FinT
 
 Transaction scenarios generate unique descriptions for every execution and remove successfully created records in cleanup blocks. This keeps tests independent while safely exercising the deployed application and persistent database.
 
+### Budgets
+
+- Create a budget for a dynamically selected period
+
+- Verify the exact category, month, year, and monthly limit
+
+- Cancel an edit without changing the persisted budget
+
+- Update the monthly limit and verify the new value
+
+- Delete a budget through the native confirmation dialog
+
+- Verify the deleted budget is removed
+
+### Budget Validation
+
+- Reject a budget without a selected category
+
+- Reject a non-positive monthly limit through browser-native validation
+
+- Reject a duplicate category, month, and year combination
+
+- Verify the exact duplicate-budget business error
+
+### Dashboard
+
+- Verify all five financial-summary values load
+
+- Verify current balance equals total income minus total expenses
+
+- Verify monthly income and expenses are non-negative
+
+- Create a current-month budget and matching expense
+
+- Verify total expenses, monthly expenses, and current balance change by the expected amount
+
+- Verify matching budget spending and utilization change
+
+- Verify accessible budget-progress text
+
+The integration workflow records dashboard and budget baselines before creating its expense. Assertions compare expected deltas instead of assuming an empty account. Cleanup removes the transaction before removing its budget.
+
 ## Testing and Quality
 
-| Test area               |                                       Current result |
-| ----------------------- | ---------------------------------------------------: |
-| Smoke                   |                                       1 passing test |
-| Authentication          |                                      3 passing tests |
-| Protected routes        |                   3 passing parameterized executions |
-| Registration validation |                                      2 passing tests |
-| Transaction workflows   |                                      4 passing tests |
-| Transaction filtering   |                                       1 passing test |
-| Transaction validation  |                                      2 passing tests |
-| **Total**               | **16 passing test executions across 7 test classes** |
+| Test area                 |                                        Current result |
+| ------------------------- | ----------------------------------------------------: |
+| Smoke                     |                                        1 passing test |
+| Authentication            |                                       3 passing tests |
+| Protected routes          |                    3 passing parameterized executions |
+| Registration validation   |                                       2 passing tests |
+| Transaction workflows     |                                       4 passing tests |
+| Transaction filtering     |                                        1 passing test |
+| Transaction validation    |                                       2 passing tests |
+| Budget workflows          |                                        1 passing test |
+| Budget validation         |                                       3 passing tests |
+| Dashboard summary         |                                        1 passing test |
+| Cross-feature integration |                                        1 passing test |
+| **Total**                 | **22 passing test executions across 11 test classes** |
 
 The suite currently verifies:
 
@@ -205,6 +264,20 @@ The suite currently verifies:
 - Description search and transaction-type filtering
 
 - Transaction form validation and special-character handling
+
+- Budget persistence, editing, cancellation, updating, and deletion
+
+- Budget field and duplicate-period validation
+
+- Dashboard financial-summary consistency
+
+- Expense effects across dashboard totals and budget utilization
+
+- Accessible budget-progress values
+
+- Baseline-and-delta assertions against persistent deployed data
+
+- Transaction-first and budget-second cleanup
 
 - Unique test-data generation and post-test cleanup
 
@@ -283,30 +356,35 @@ Current Java structure:
 
 ```text
 src/test/java/dev/portfolio/fintrack/
-├── components/
-│   └── AppHeader.java
-├── config/
-│   └── TestConfig.java
-├── core/
-│   ├── AuthenticatedTest.java
-│   ├── BaseTest.java
-│   └── DriverFactory.java
-├── data/
-│   └── TestData.java
-├── pages/
-│   ├── BasePage.java
-│   ├── DashboardPage.java
-│   ├── LoginPage.java
-│   ├── RegisterPage.java
-│   └── TransactionsPage.java
-└── tests/
-    ├── AuthenticationTest.java
-    ├── FinTrackSmokeTest.java
-    ├── ProtectedRouteTest.java
-    ├── RegistrationTest.java
-    ├── TransactionFilterTest.java
-    ├── TransactionTest.java
-    └── TransactionValidationTest.java
+|-- components/
+|   `-- AppHeader.java
+|-- config/
+|   `-- TestConfig.java
+|-- core/
+|   |-- AuthenticatedTest.java
+|   |-- BaseTest.java
+|   `-- DriverFactory.java
+|-- data/
+|   `-- TestData.java
+|-- pages/
+|   |-- BasePage.java
+|   |-- BudgetsPage.java
+|   |-- DashboardPage.java
+|   |-- LoginPage.java
+|   |-- RegisterPage.java
+|   `-- TransactionsPage.java
+`-- tests/
+    |-- AuthenticationTest.java
+    |-- BudgetDashboardIntegrationTest.java
+    |-- BudgetTest.java
+    |-- BudgetValidationTest.java
+    |-- DashboardTest.java
+    |-- FinTrackSmokeTest.java
+    |-- ProtectedRouteTest.java
+    |-- RegistrationTest.java
+    |-- TransactionFilterTest.java
+    |-- TransactionTest.java
+    `-- TransactionValidationTest.java
 ```
 
 ## Automation Design
@@ -343,7 +421,9 @@ Each test begins with an isolated browser session and does not depend on authent
 
 Tests do not depend on execution order. Authentication tests reuse one dedicated fictional account, while permanent account creation is excluded from routine execution.
 
-Transaction tests create uniquely named records and use `finally` cleanup blocks so created data is removed even when an assertion fails. Test runs are currently serial because the suite operates against one shared deployed automation account.
+Transaction tests create uniquely named records and use `finally` cleanup blocks so created data is removed even when an assertion fails. Budget tests use a dedicated configured category and dynamically selected periods to avoid modifying existing records.
+
+The dashboard integration test records existing totals and budget values before making changes. It verifies numeric deltas, removes the generated transaction first, and removes the generated budget second. Test runs are currently serial because the suite operates against one shared deployed automation account.
 
 ### Explicit Waits
 
@@ -364,6 +444,12 @@ The suite waits for observable browser conditions, including:
 - Search and filter results
 
 - Transaction rows appearing or disappearing after mutations
+
+- Budget periods becoming selected
+
+- Budget cards appearing, updating, or disappearing
+
+- Dashboard summaries and budget-progress cards loading
 
 Fixed delays such as `Thread.sleep()` are not used.
 
@@ -419,6 +505,8 @@ export FINTRACK_TEST_EMAIL='replace-with-dedicated-test-email'
 export FINTRACK_TEST_PASSWORD='replace-with-dedicated-test-password'
 
 export FINTRACK_ALLOW_REGISTRATION='false'
+
+export FINTRACK_TEST_BUDGET_CATEGORY='Travel'
 ```
 
 Load the values into the current terminal:
@@ -457,6 +545,12 @@ Run all transaction test classes:
 mvn -Dtest="Transaction*" test
 ```
 
+Run all budget and dashboard test classes:
+
+```bash
+mvn -Dtest=BudgetTest,BudgetValidationTest,DashboardTest,BudgetDashboardIntegrationTest test
+```
+
 The browser currently runs visibly during local execution. Headless execution will be added before GitHub Actions integration.
 
 ## Test Reports
@@ -483,7 +577,7 @@ Generated reports are excluded from Git because they are recreated during every 
 
 - [x] Day 3 — Transaction workflows
 
-- [ ] Day 4 — Budget and dashboard workflows
+- [x] Day 4 — Budget and dashboard workflows
 
 - [ ] Day 5 — Reliability, tagging, screenshots, and headless execution
 
@@ -495,4 +589,4 @@ Generated reports are excluded from Git because they are recreated during every 
 
 Version `1.0.0-SNAPSHOT` is under active development.
 
-Authentication and transaction automation are complete with 16 passing test executions across seven test classes. Budget, dashboard, reliability, CI, and final release work will be added incrementally.
+Authentication, transaction, budget, dashboard, and cross-feature integration automation are complete with 22 passing test executions across 11 test classes. Reliability, tagging, failure evidence, headless execution, CI, and final release work will be added incrementally.
