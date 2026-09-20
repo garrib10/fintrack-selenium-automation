@@ -7,7 +7,12 @@ import org.junit.jupiter.api.Test;
 import dev.portfolio.fintrack.core.AuthenticatedTest;
 import dev.portfolio.fintrack.pages.DashboardPage;
 import dev.portfolio.fintrack.pages.DashboardPage.DashboardSummary;
+import org.junit.jupiter.api.Tag;
 
+
+@Tag("dashboard")
+@Tag("smoke")
+@Tag("regression")
 class DashboardTest extends AuthenticatedTest {
 
     @Test

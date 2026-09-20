@@ -7,7 +7,10 @@ import org.junit.jupiter.api.Test;
 import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.AuthenticatedTest;
 import dev.portfolio.fintrack.pages.BudgetsPage;
+import org.junit.jupiter.api.Tag;
 
+@Tag("budgets")
+@Tag("regression")
 class BudgetValidationTest extends AuthenticatedTest {
 
     @Test

@@ -7,7 +7,10 @@ import org.junit.jupiter.api.Test;
 import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.BaseTest;
 import dev.portfolio.fintrack.pages.RegisterPage;
+import  org.junit.jupiter.api.Tag;
 
+@Tag("authentication")
+@Tag("regression")
 class RegistrationTest extends BaseTest {
 
     @Test

@@ -8,7 +8,10 @@ import org.junit.jupiter.api.Test;
 import dev.portfolio.fintrack.core.AuthenticatedTest;
 import dev.portfolio.fintrack.data.TestData;
 import dev.portfolio.fintrack.pages.TransactionsPage;
+import org.junit.jupiter.api.Tag;
 
+@Tag("transactions")
+@Tag("regression")
 class TransactionValidationTest extends AuthenticatedTest {
 
   @Test
