@@ -16,6 +16,7 @@ import dev.portfolio.fintrack.pages.BudgetsPage;
  */
 @Tag("budgets")
 @Tag("staging-only")
+@Tag("mutating")
 class BudgetValidationTest extends AuthenticatedTest {
 
     @Test

@@ -8,8 +8,9 @@ import dev.portfolio.fintrack.core.BaseTest;
 import dev.portfolio.fintrack.pages.LoginPage;
 import org.junit.jupiter.api.Tag;
 
-@Tag("smoke")
 @Tag("regression")
+@Tag("smoke")
+@Tag("read-only")
 class FinTrackSmokeTest extends BaseTest {
 
     @Test

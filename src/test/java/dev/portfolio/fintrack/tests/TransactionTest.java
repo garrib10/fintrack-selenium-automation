@@ -21,6 +21,7 @@ import dev.portfolio.fintrack.pages.TransactionsPage.TransactionRow;
  */
 @Tag("transactions")
 @Tag("regression")
+@Tag("mutating")
 class TransactionTest extends AuthenticatedTest {
 
     /** A built-in category every account has. */

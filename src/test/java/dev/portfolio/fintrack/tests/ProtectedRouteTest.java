@@ -14,6 +14,8 @@ import dev.portfolio.fintrack.pages.LoginPage;
 /** Each execution starts in its own signed-out browser. */
 @Tag("authentication")
 @Tag("regression")
+@Tag("smoke")
+@Tag("read-only")
 class ProtectedRouteTest extends BaseTest {
 
     @ParameterizedTest(name = "Unauthenticated visit to {0} redirects to login")

@@ -20,6 +20,7 @@ import dev.portfolio.fintrack.pages.DeletionResult;
  */
 @Tag("budgets")
 @Tag("regression")
+@Tag("mutating")
 class BudgetTest extends AuthenticatedTest {
 
     @Test

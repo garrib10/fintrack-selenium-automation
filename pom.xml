@@ -24,10 +24,10 @@
     <maven.surefire.plugin.version>3.6.0</maven.surefire.plugin.version>
 
     <!--
-      Tags left out of every run unless overridden, e.g.
-      -DexcludedGroups=none -Dgroups=staging-only for a staging run.
+      Left out of the default (full regression) run. Override to include, e.g.
+      -DexcludedGroups=none -Dtest=BudgetValidationTest on staging.
     -->
-    <excludedGroups>staging-only</excludedGroups>
+    <excludedGroups>staging-only,maintenance,profile-photo</excludedGroups>
   </properties>
 
   <dependencies>

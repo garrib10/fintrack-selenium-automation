@@ -17,6 +17,7 @@ import dev.portfolio.fintrack.pages.RegisterPage;
  */
 @Tag("authentication")
 @Tag("regression")
+@Tag("read-only")
 class RegistrationTest extends BaseTest {
 
     /**

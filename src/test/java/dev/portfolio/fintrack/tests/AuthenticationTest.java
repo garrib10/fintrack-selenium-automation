@@ -19,6 +19,8 @@ import dev.portfolio.fintrack.pages.LoginPage;
  */
 @Tag("authentication")
 @Tag("regression")
+@Tag("smoke")
+@Tag("read-only")
 class AuthenticationTest extends BaseTest {
 
     /** A well-formed address that is not an account, so failed attempts never lock the automation account. */
@@ -29,7 +31,6 @@ class AuthenticationTest extends BaseTest {
             "DefinitelyWrongPassword123!";
 
     @Test
-    @Tag("smoke")
     void sessionPersistsAndProtectedReturnPathWorks() {
         LoginPage loginPage = new LoginPage(driver).open();
 

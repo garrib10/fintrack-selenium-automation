@@ -24,6 +24,7 @@ import dev.portfolio.fintrack.pages.TransactionsPage;
 @Tag("categories")
 @Tag("transactions")
 @Tag("regression")
+@Tag("mutating")
 class CustomCategoryTest extends AuthenticatedTest {
 
     @Test

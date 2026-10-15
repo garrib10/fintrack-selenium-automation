@@ -18,6 +18,7 @@ import dev.portfolio.fintrack.pages.TransactionsPage;
  */
 @Tag("transactions")
 @Tag("regression")
+@Tag("mutating")
 class TransactionFilterTest extends AuthenticatedTest {
 
     @Test

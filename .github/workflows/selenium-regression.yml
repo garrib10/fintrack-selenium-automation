@@ -1,5 +1,8 @@
 name: Selenium Regression
 
+# Pull requests and pushes run read-only smoke coverage against production.
+# The full regression creates and deletes test data, so it only runs when
+# started by hand; against production it also needs a typed confirmation.
 on:
   pull_request:
     branches:
@@ -8,24 +11,55 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      suite:
+        description: "smoke is read-only; regression creates and deletes test data"
+        type: choice
+        options:
+          - smoke
+          - regression
+        default: smoke
+      target:
+        description: "FinTrack deployment to test"
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+      confirm_production_mutation:
+        description: "Type mutate-production to allow regression against production"
+        type: string
+        required: false
+        default: ""
 
 permissions:
   contents: read
 
+# One automation account is shared by every run, so runs never overlap and a
+# run in progress is never cancelled (that would skip its cleanup).
 concurrency:
-  group: selenium-regression-${{ github.ref }}
-  cancel-in-progress: true
+  group: fintrack-automation-account
+  cancel-in-progress: false
 
 jobs:
   regression:
+    # Required status check: keep this name unchanged.
     name: Selenium regression suite
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     env:
-      FINTRACK_BASE_URL: ${{ vars.FINTRACK_BASE_URL }}
+      SUITE: ${{ github.event_name == 'workflow_dispatch' && inputs.suite || 'smoke' }}
+      FINTRACK_TARGET_ENV: ${{ github.event_name == 'workflow_dispatch' && inputs.target || 'production' }}
+      CONFIRMATION: ${{ inputs.confirm_production_mutation }}
+      FINTRACK_BASE_URL: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'staging') && vars.FINTRACK_STAGING_BASE_URL || vars.FINTRACK_BASE_URL }}
+      # The suite reads FINTRACK_STAGING_* on staging and FINTRACK_TEST_* otherwise.
       FINTRACK_TEST_EMAIL: ${{ secrets.FINTRACK_TEST_EMAIL }}
       FINTRACK_TEST_PASSWORD: ${{ secrets.FINTRACK_TEST_PASSWORD }}
+      FINTRACK_STAGING_EMAIL: ${{ secrets.FINTRACK_STAGING_EMAIL }}
+      FINTRACK_STAGING_PASSWORD: ${{ secrets.FINTRACK_STAGING_PASSWORD }}
+      # Only sent to staging; the suite refuses it for any other target.
+      FINTRACK_VERCEL_BYPASS_SECRET: ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'staging') && secrets.FINTRACK_VERCEL_BYPASS_SECRET || '' }}
       FINTRACK_ALLOW_REGISTRATION: ${{ vars.FINTRACK_ALLOW_REGISTRATION }}
       FINTRACK_TEST_BUDGET_CATEGORY: ${{ vars.FINTRACK_TEST_BUDGET_CATEGORY }}
 
@@ -46,37 +80,79 @@ jobs:
           mvn -version
           google-chrome --version
 
+      - name: Refuse unconfirmed production regression
+        shell: bash
+        run: |
+          if [[ "$SUITE" == "regression" \
+                && "$FINTRACK_TARGET_ENV" == "production" \
+                && "$CONFIRMATION" != "mutate-production" ]]; then
+            echo "::error::The regression suite creates and deletes data. Type mutate-production to run it against production."
+            exit 1
+          fi
+
       - name: Validate test configuration
         shell: bash
         run: |
-          if [[ -z "$FINTRACK_BASE_URL" ]]; then
-            echo "FINTRACK_BASE_URL is not configured"
+          missing=0
+
+          require() {
+            if [[ -z "${!1}" ]]; then
+              echo "::error::$1 is not configured"
+              missing=1
+            fi
+          }
+
+          require FINTRACK_BASE_URL
+
+          if [[ "$FINTRACK_TARGET_ENV" == "staging" ]]; then
+            require FINTRACK_STAGING_EMAIL
+            require FINTRACK_STAGING_PASSWORD
+            require FINTRACK_VERCEL_BYPASS_SECRET
+          else
+            require FINTRACK_TEST_EMAIL
+            require FINTRACK_TEST_PASSWORD
+          fi
+
+          if [[ "$SUITE" == "regression" ]]; then
+            require FINTRACK_TEST_BUDGET_CATEGORY
+          fi
+
+          if [[ "$missing" -ne 0 ]]; then
             exit 1
           fi
 
-          if [[ -z "$FINTRACK_TEST_EMAIL" ]]; then
-            echo "FINTRACK_TEST_EMAIL is not configured"
-            exit 1
+          host="${FINTRACK_BASE_URL#*://}"
+          host="${host%%/*}"
+          echo "Suite: $SUITE | target: $FINTRACK_TARGET_ENV ($host)"
+
+      - name: Check FinTrack health
+        shell: bash
+        run: |
+          args=(--fail --silent --show-error --output /dev/null
+                --max-time 30 --retry 6 --retry-delay 10 --retry-all-errors)
+
+          if [[ -n "$FINTRACK_VERCEL_BYPASS_SECRET" ]]; then
+            args+=(--header "x-vercel-protection-bypass: $FINTRACK_VERCEL_BYPASS_SECRET")
           fi
 
-          if [[ -z "$FINTRACK_TEST_PASSWORD" ]]; then
-            echo "FINTRACK_TEST_PASSWORD is not configured"
-            exit 1
-          fi
+          curl "${args[@]}" "${FINTRACK_BASE_URL%/}/api/health"
+          echo "FinTrack health check passed"
 
-          if [[ -z "$FINTRACK_TEST_BUDGET_CATEGORY" ]]; then
-            echo "FINTRACK_TEST_BUDGET_CATEGORY is not configured"
-            exit 1
+      - name: Run Selenium suite
+        shell: bash
+        run: |
+          if [[ "$SUITE" == "smoke" ]]; then
+            # Read-only browser tests plus browser-free unit tests.
+            mvn --batch-mode --no-transfer-progress clean test \
+              -Dheadless=true \
+              -Dgroups='smoke|unit' \
+              -DexcludedGroups='staging-only,maintenance,profile-photo,mutating'
+          else
+            # Every default test; pom.xml excludes staging-only,
+            # maintenance and profile-photo.
+            mvn --batch-mode --no-transfer-progress clean test \
+              -Dheadless=true
           fi
-
-      - name: Run headless Selenium regression suite
-        run: >
-          mvn
-          --batch-mode
-          --no-transfer-progress
-          clean
-          test
-          -Dheadless=true
 
       - name: Upload Surefire reports
         if: always()
@@ -85,7 +161,7 @@ jobs:
           name: surefire-reports-${{ github.run_id }}
           path: target/surefire-reports/
           if-no-files-found: warn
-          retention-days: 14
+          retention-days: 7
 
       - name: Upload failure evidence
         if: failure()
@@ -94,4 +170,4 @@ jobs:
           name: selenium-failure-evidence-${{ github.run_id }}
           path: target/test-artifacts/
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 7

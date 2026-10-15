@@ -26,6 +26,7 @@ import dev.portfolio.fintrack.pages.TransactionsPage;
 @Tag("dashboard")
 @Tag("integration")
 @Tag("regression")
+@Tag("mutating")
 class BudgetDashboardIntegrationTest extends AuthenticatedTest {
 
     private static final BigDecimal BUDGET_LIMIT =
