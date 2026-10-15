@@ -53,8 +53,4 @@ public final class RegisterPage extends BasePage {
     public String errorMessage() {
         return waitForVisibleText(ERROR_ALERT);
     }
-
-    public String emailValidationMessage() {
-        return readDomProperty(EMAIL_INPUT, "validationMessage");
-    }
 }

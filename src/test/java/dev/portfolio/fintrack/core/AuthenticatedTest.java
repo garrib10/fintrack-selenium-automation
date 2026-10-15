@@ -5,6 +5,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.CleanupRegistry.Bucket;
+import dev.portfolio.fintrack.core.CleanupRegistry.Registration;
 import dev.portfolio.fintrack.data.TestData;
 import dev.portfolio.fintrack.pages.BudgetsPage;
 import dev.portfolio.fintrack.pages.CategoriesPage;
@@ -51,11 +52,15 @@ public abstract class AuthenticatedTest extends BaseTest {
         cleanupRegistry.runAll();
     }
 
-    /** Deletes this run's transaction after the test, wherever the test stopped. */
-    protected void cleanUpTransactionAfterTest(String description) {
+    /**
+     * Deletes this run's transaction after the test, wherever the test stopped.
+     * Cleanup matches by exact description, so register the new description
+     * before saving a rename and cancel the old registration once it is saved.
+     */
+    protected Registration cleanUpTransactionAfterTest(String description) {
         requireCurrentRunRecord(description);
 
-        cleanupRegistry.register(
+        return cleanupRegistry.register(
                 Bucket.TRANSACTIONS,
                 "transaction " + description,
                 () -> {
@@ -70,7 +75,7 @@ public abstract class AuthenticatedTest extends BaseTest {
      * Deletes a budget after the test. Only the configured automation budget
      * category or a category created by this run may be cleaned up.
      */
-    protected void cleanUpBudgetAfterTest(
+    protected Registration cleanUpBudgetAfterTest(
             String category,
             YearMonth period) {
 
@@ -81,7 +86,7 @@ public abstract class AuthenticatedTest extends BaseTest {
                             + " category and this run's categories");
         }
 
-        cleanupRegistry.register(
+        return cleanupRegistry.register(
                 Bucket.BUDGETS,
                 "budget " + category + " " + period,
                 () -> {
@@ -93,10 +98,10 @@ public abstract class AuthenticatedTest extends BaseTest {
     }
 
     /** Deletes this run's custom category after its transactions and budgets. */
-    protected void cleanUpCategoryAfterTest(String name) {
+    protected Registration cleanUpCategoryAfterTest(String name) {
         requireCurrentRunRecord(name);
 
-        cleanupRegistry.register(
+        return cleanupRegistry.register(
                 Bucket.CATEGORIES,
                 "category " + name,
                 () -> {
@@ -105,6 +110,14 @@ public abstract class AuthenticatedTest extends BaseTest {
                             .open()
                             .deleteIfPresent(name);
                 });
+    }
+
+    /**
+     * Cancels registered cleanup the test no longer needs: the test deleted the
+     * record itself, or a rename was saved and the old name no longer exists.
+     */
+    protected void cleanupNoLongerNeeded(Registration registration) {
+        cleanupRegistry.unregister(registration);
     }
 
     /** A failed test may have logged out or left any page open; start from a known state. */

@@ -38,8 +38,16 @@ public final class AppShell extends BasePage {
         return this;
     }
 
+    /** Waits for the signed-in navigation; use for positive checks. */
     public boolean isDisplayed() {
         return visibleNavigation().isDisplayed();
+    }
+
+    /** Checks without waiting, for asserting the signed-in shell is absent. */
+    public boolean isCurrentlyDisplayed() {
+        return driver.findElements(VISIBLE_NAVIGATION_CANDIDATES)
+                .stream()
+                .anyMatch(BasePage::isDisplayedSafely);
     }
 
     /**

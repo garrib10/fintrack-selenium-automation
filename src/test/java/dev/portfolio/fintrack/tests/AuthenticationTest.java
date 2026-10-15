@@ -2,111 +2,109 @@ package dev.portfolio.fintrack.tests;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import dev.portfolio.fintrack.components.AppShell;
 import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.BaseTest;
+import dev.portfolio.fintrack.pages.BudgetsPage;
 import dev.portfolio.fintrack.pages.DashboardPage;
 import dev.portfolio.fintrack.pages.LoginPage;
-import org.junit.jupiter.api.Tag;
 
+/**
+ * Signed-in session behavior through the real Login form. Neither test
+ * creates or changes application records.
+ */
 @Tag("authentication")
 @Tag("regression")
 class AuthenticationTest extends BaseTest {
 
-        @Test
-        @Tag("smoke")
-        void registeredUserCanLoginAndRemainAuthenticatedAfterRefresh() {
-                LoginPage loginPage = new LoginPage(driver).open();
+    /** A well-formed address that is not an account, so failed attempts never lock the automation account. */
+    private static final String UNREGISTERED_EMAIL =
+            "not-a-fintrack-account@example.com";
 
-                loginPage.login(
-                                TestConfig.testEmail(),
-                                TestConfig.testPassword());
+    private static final String WRONG_PASSWORD =
+            "DefinitelyWrongPassword123!";
 
-                DashboardPage dashboardPage = new DashboardPage(driver).waitUntilLoaded();
+    @Test
+    @Tag("smoke")
+    void sessionPersistsAndProtectedReturnPathWorks() {
+        LoginPage loginPage = new LoginPage(driver).open();
 
-                assertAll(
-                                () -> assertEquals(
-                                                "/",
-                                                dashboardPage.currentPath(),
-                                                "Expected successful login to open the dashboard"),
-                                () -> assertTrue(
-                                                dashboardPage.isPrimaryNavigationDisplayed(),
-                                                "Expected authenticated navigation to be visible"),
-                                () -> assertTrue(
-                                                dashboardPage.isCurrentBalanceDisplayed(),
-                                                "Expected the dashboard balance to be visible"));
+        assertEquals("Login", loginPage.visibleHeading());
 
-                dashboardPage.refresh();
+        loginPage.login(
+                TestConfig.testEmail(),
+                TestConfig.testPassword());
 
-                assertAll(
-                                () -> assertEquals(
-                                                "/",
-                                                dashboardPage.currentPath(),
-                                                "Expected refresh to preserve the dashboard route"),
-                                () -> assertTrue(
-                                                dashboardPage.isPrimaryNavigationDisplayed(),
-                                                "Expected the authenticated session to survive refresh"));
-        }
+        DashboardPage dashboardPage =
+                new DashboardPage(driver).waitUntilLoaded();
 
-        @Test
-        void invalidPasswordKeepsUserOnLoginPageAndDisplaysError() {
-                LoginPage loginPage = new LoginPage(driver).open();
+        assertAll(
+                () -> assertEquals("/", dashboardPage.currentPath(),
+                        "Expected login to open the dashboard"),
+                () -> assertEquals("Dashboard", dashboardPage.visibleHeading()),
+                () -> assertTrue(dashboardPage.isPrimaryNavigationDisplayed(),
+                        "Expected the signed-in navigation"));
 
-                loginPage.login(
-                                TestConfig.testEmail(),
-                                "DefinitelyWrongPassword123!");
+        dashboardPage.refresh();
 
-                assertAll(
-                                () -> assertEquals(
-                                                "/login",
-                                                loginPage.currentPath(),
-                                                "Expected invalid credentials to remain on the login route"),
-                                () -> assertEquals(
-                                                "Invalid email or password",
-                                                loginPage.errorMessage(),
-                                                "Expected the invalid-credentials error message"));
-        }
+        assertAll(
+                () -> assertEquals("/", dashboardPage.currentPath(),
+                        "Expected refresh to keep the dashboard route"),
+                () -> assertEquals("Dashboard", dashboardPage.visibleHeading(),
+                        "Expected the session to survive a refresh"),
+                () -> assertTrue(dashboardPage.isCurrentBalanceDisplayed(),
+                        "Expected dashboard data after refresh"));
 
-        @Test
-        void logoutEndsSessionAndRestoresProtectedRouteBehavior() {
-                LoginPage loginPage = new LoginPage(driver).open();
+        LoginPage loggedOutPage =
+                dashboardPage.appShell().accountMenu().logout();
 
-                loginPage.login(
-                                TestConfig.testEmail(),
-                                TestConfig.testPassword());
+        assertAll(
+                () -> assertEquals("/login", loggedOutPage.currentPath()),
+                () -> assertEquals("Login", loggedOutPage.visibleHeading()),
+                () -> assertFalse(new AppShell(driver).isCurrentlyDisplayed(),
+                        "Expected the signed-in navigation to be gone after logout"));
 
-                DashboardPage dashboardPage = new DashboardPage(driver).waitUntilLoaded();
+        driver.get(TestConfig.baseUrl() + "/budgets");
 
-                AppShell appShell = new AppShell(driver).waitUntilDisplayed();
+        LoginPage redirectedPage = new LoginPage(driver).waitUntilLoaded();
 
-                assertAll(
-                                () -> assertEquals(
-                                                "/",
-                                                dashboardPage.currentPath(),
-                                                "Expected successful login to open the dashboard"),
-                                () -> assertTrue(
-                                                appShell.isDisplayed(),
-                                                "Expected authenticated navigation before logout"));
+        assertAll(
+                () -> assertEquals("/login", redirectedPage.currentPath(),
+                        "Expected a signed-out visit to /budgets to require login"),
+                () -> assertEquals("Login", redirectedPage.visibleHeading()));
 
-                LoginPage loggedOutLoginPage = appShell.accountMenu().logout();
+        redirectedPage.login(
+                TestConfig.testEmail(),
+                TestConfig.testPassword());
 
-                assertAll(
-                                () -> assertEquals(
-                                                "/login",
-                                                loggedOutLoginPage.currentPath(),
-                                                "Expected logout to return the user to login"),
-                                () -> assertTrue(
-                                                loggedOutLoginPage.isEmailFieldDisplayed(),
-                                                "Expected the login form after logout"));
+        BudgetsPage budgetsPage = new BudgetsPage(driver).waitUntilLoaded();
 
-                driver.get(TestConfig.baseUrl() + "/transactions");
-                loggedOutLoginPage.waitUntilLoaded();
+        assertAll(
+                () -> assertEquals("/budgets", budgetsPage.currentPath(),
+                        "Expected login to return to the requested route"),
+                () -> assertEquals("Budgets", budgetsPage.visibleHeading()));
+    }
 
-                assertEquals(
-                                "/login",
-                                loggedOutLoginPage.currentPath(),
-                                "Expected the logged-out user to remain blocked from protected routes");
-        }
+    @Test
+    void invalidCredentialsKeepUserOnLoginWithAnError() {
+        LoginPage loginPage = new LoginPage(driver).open();
+
+        loginPage.login(UNREGISTERED_EMAIL, WRONG_PASSWORD);
+
+        String error = loginPage.errorMessage();
+
+        assertAll(
+                () -> assertEquals(
+                        "Invalid email or password",
+                        error.replaceFirst("[.!]$", ""),
+                        "Expected the invalid-credentials error"),
+                () -> assertEquals("/login", loginPage.currentPath()),
+                () -> assertEquals("Login", loginPage.visibleHeading()),
+                () -> assertFalse(new AppShell(driver).isCurrentlyDisplayed(),
+                        "Expected no signed-in navigation after a failed login"));
+    }
 }

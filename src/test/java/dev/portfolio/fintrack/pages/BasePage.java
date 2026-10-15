@@ -259,6 +259,19 @@ public abstract class BasePage {
         return confirmationText;
     }
 
+    /** The visible page h1 once loading has finished, for asserting where the user landed. */
+    public String visibleHeading() {
+        return newWait()
+                .withMessage(() -> "No visible h1 heading appeared")
+                .until(ignored -> isLoadingIndicatorDisplayed()
+                        ? null
+                        : visibleHeadingTexts()
+                                .stream()
+                                .filter(text -> !text.isEmpty())
+                                .findFirst()
+                                .orElse(null));
+    }
+
     public String currentUrl() {
         return driver.getCurrentUrl();
     }

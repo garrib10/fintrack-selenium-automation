@@ -2,6 +2,7 @@ package dev.portfolio.fintrack.core;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -75,6 +76,47 @@ class CleanupRegistryTest {
         assertAll(
                 () -> assertEquals(List.of("transaction"), calls),
                 () -> assertTrue(registry.isEmpty()));
+    }
+
+    @Test
+    void anUnregisteredActionDoesNotRun() {
+        CleanupRegistry.Registration deleted =
+                registry.register(Bucket.TRANSACTIONS, "deleted", record("deleted"));
+        registry.register(Bucket.TRANSACTIONS, "kept", record("kept"));
+
+        assertAll(
+                () -> assertTrue(registry.unregister(deleted)),
+                () -> assertFalse(registry.unregister(deleted),
+                        "A second unregister should be a no-op"));
+
+        registry.runAll();
+
+        assertEquals(List.of("kept"), calls);
+    }
+
+    @Test
+    void aRenamedRecordCanBeTrackedUnderBothNamesUntilTheRenameIsConfirmed() {
+        CleanupRegistry.Registration original =
+                registry.register(Bucket.TRANSACTIONS, "original", record("original"));
+        registry.register(Bucket.TRANSACTIONS, "renamed", record("renamed"));
+
+        registry.unregister(original);
+        registry.runAll();
+
+        assertEquals(List.of("renamed"), calls);
+    }
+
+    @Test
+    void orderingStaysNewestFirstAfterUnregistering() {
+        CleanupRegistry.Registration first =
+                registry.register(Bucket.TRANSACTIONS, "first", record("first"));
+        registry.register(Bucket.TRANSACTIONS, "second", record("second"));
+        registry.unregister(first);
+        registry.register(Bucket.TRANSACTIONS, "third", record("third"));
+
+        registry.runAll();
+
+        assertEquals(List.of("third", "second"), calls);
     }
 
     @Test

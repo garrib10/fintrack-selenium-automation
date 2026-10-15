@@ -25,25 +25,48 @@ public final class CleanupRegistry {
         void run() throws Exception;
     }
 
+    /** Identifies one registered action so it can be cancelled later. */
+    public static final class Registration {
+        private Registration() {
+        }
+    }
+
     private record Entry(
             Bucket bucket,
             String description,
             CleanupAction action,
-            int sequence) {
+            long sequence,
+            Registration registration) {
     }
 
     private final List<Entry> entries = new ArrayList<>();
 
-    public void register(
+    private long nextSequence;
+
+    public Registration register(
             Bucket bucket,
             String description,
             CleanupAction action) {
+
+        Registration registration = new Registration();
 
         entries.add(new Entry(
                 Objects.requireNonNull(bucket, "bucket"),
                 Objects.requireNonNull(description, "description"),
                 Objects.requireNonNull(action, "action"),
-                entries.size()));
+                nextSequence++,
+                registration));
+
+        return registration;
+    }
+
+    /**
+     * Cancels an action, for example after the test deleted the record itself.
+     * Returns false when it already ran or was cancelled.
+     */
+    public boolean unregister(Registration registration) {
+        Objects.requireNonNull(registration, "registration");
+        return entries.removeIf(entry -> entry.registration() == registration);
     }
 
     public boolean isEmpty() {

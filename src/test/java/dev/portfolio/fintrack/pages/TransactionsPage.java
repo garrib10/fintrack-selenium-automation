@@ -1,5 +1,6 @@
 package dev.portfolio.fintrack.pages;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -85,6 +86,9 @@ public final class TransactionsPage extends BasePage {
       By.xpath(FILTER_FORM
           + "//button[normalize-space(.)='Reset']");
 
+  private static final By FILTERED_EMPTY_MESSAGE =
+      By.xpath("//p[normalize-space(.)='No transactions match these filters.']");
+
   /** Filtered and unfiltered empty history states. */
   private static final By EMPTY_HISTORY_MESSAGE =
       By.xpath("//p[normalize-space(.)='No transactions match these filters.'"
@@ -96,6 +100,10 @@ public final class TransactionsPage extends BasePage {
   /** Typed into the native date input; DriverFactory fixes Chrome to en-US. */
   private static final DateTimeFormatter DATE_INPUT_FORMAT =
       DateTimeFormatter.ofPattern("MMddyyyy");
+
+  /** FinTrack's default MEDIUM date preference, e.g. "Oct 14, 2026". */
+  private static final DateTimeFormatter MEDIUM_DISPLAY_DATE =
+      DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.US);
 
   /** A bound on deleting exact duplicates; one run should never create this many. */
   private static final int MAX_DUPLICATE_DELETIONS = 5;
@@ -152,7 +160,7 @@ public final class TransactionsPage extends BasePage {
     return submitAndConfirmAdded();
   }
 
-  public TransactionsPage fillNewTransactionForm(
+  private void fillNewTransactionForm(
       String type,
       String category,
       String amount,
@@ -162,23 +170,6 @@ public final class TransactionsPage extends BasePage {
     selectType(type);
     selectCategory(category);
     fillAmountDescriptionAndDate(amount, description, date);
-
-    return this;
-  }
-
-  public TransactionsPage submitNewTransaction() {
-    click(ADD_TRANSACTION_BUTTON);
-    return this;
-  }
-
-  public String amountValidationMessage() {
-    return waitUntilVisible(AMOUNT_INPUT)
-        .getDomProperty("validationMessage");
-  }
-
-  public String descriptionValidationMessage() {
-    return waitUntilVisible(DESCRIPTION_INPUT)
-        .getDomProperty("validationMessage");
   }
 
   /**
@@ -230,6 +221,23 @@ public final class TransactionsPage extends BasePage {
   /** The visible name of the selected category filter, "All categories" when unset. */
   public String selectedFilterCategory() {
     return selectedText(FILTER_CATEGORY_SELECT);
+  }
+
+  /** The type filter's value; empty means "All". */
+  public String selectedTypeFilter() {
+    return selectedValue(FILTER_TYPE_SELECT);
+  }
+
+  public String searchText() {
+    String value = waitUntilVisible(SEARCH_INPUT).getDomProperty("value");
+    return value == null ? "" : value;
+  }
+
+  /** Whether the history shows the filtered empty state ("No transactions match these filters."). */
+  public boolean isFilteredEmptyStateDisplayed() {
+    return driver.findElements(FILTERED_EMPTY_MESSAGE)
+        .stream()
+        .anyMatch(BasePage::isDisplayedSafely);
   }
 
   public String selectedSortBy() {
@@ -510,11 +518,44 @@ public final class TransactionsPage extends BasePage {
         + "]]";
   }
 
+  /**
+   * Parses a displayed amount such as "$1,234.50" or "-$42.75" into its
+   * magnitude, so assertions do not depend on currency formatting.
+   */
+  static BigDecimal parseAmount(String displayed) {
+    String digits = displayed.replaceAll("[^0-9.]", "");
+
+    if (digits.isEmpty()) {
+      throw new IllegalArgumentException("No amount in displayed value");
+    }
+
+    return new BigDecimal(digits);
+  }
+
+  /**
+   * Whether a date cell shows {@code date} in either FinTrack date preference:
+   * MEDIUM ("Oct 14, 2026", the default) or ISO ("2026-10-14").
+   */
+  static boolean matchesDisplayedDate(String displayed, LocalDate date) {
+    String normalized = displayed.trim().replaceAll("\\s+", " ");
+
+    return normalized.equals(date.format(MEDIUM_DISPLAY_DATE))
+        || normalized.equals(date.toString());
+  }
+
   public record TransactionRow(
       String date,
       String description,
       String category,
       String type,
       String amount) {
+
+    public BigDecimal amountValue() {
+      return parseAmount(amount);
+    }
+
+    public boolean showsDate(LocalDate expected) {
+      return matchesDisplayedDate(date, expected);
+    }
   }
 }
