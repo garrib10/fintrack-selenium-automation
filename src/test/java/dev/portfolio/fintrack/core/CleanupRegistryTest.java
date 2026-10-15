@@ -79,6 +79,17 @@ class CleanupRegistryTest {
     }
 
     @Test
+    void accountSettingsAreRestoredAfterRecordsAreRemoved() {
+        registry.register(Bucket.ACCOUNT_SETTINGS, "page size", record("page size"));
+        registry.register(Bucket.CATEGORIES, "category", record("category"));
+        registry.register(Bucket.TRANSACTIONS, "transaction", record("transaction"));
+
+        registry.runAll();
+
+        assertEquals(List.of("transaction", "category", "page size"), calls);
+    }
+
+    @Test
     void anUnregisteredActionDoesNotRun() {
         CleanupRegistry.Registration deleted =
                 registry.register(Bucket.TRANSACTIONS, "deleted", record("deleted"));

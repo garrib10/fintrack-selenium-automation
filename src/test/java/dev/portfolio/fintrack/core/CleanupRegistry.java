@@ -8,8 +8,9 @@ import java.util.Objects;
 /**
  * Cleanup registered by a test as soon as it creates a record. Actions run by
  * bucket (transactions, then budgets, then categories, so nothing is still in
- * use when it is removed) and newest first within a bucket. Each action runs
- * even when an earlier one fails; failures are reported together afterwards.
+ * use when it is removed, then account settings) and newest first within a
+ * bucket. Each action runs even when an earlier one fails; failures are
+ * reported together afterwards.
  */
 public final class CleanupRegistry {
 
@@ -17,7 +18,9 @@ public final class CleanupRegistry {
     public enum Bucket {
         TRANSACTIONS,
         BUDGETS,
-        CATEGORIES
+        CATEGORIES,
+        /** Account preferences and the profile photo, restored last. */
+        ACCOUNT_SETTINGS
     }
 
     @FunctionalInterface

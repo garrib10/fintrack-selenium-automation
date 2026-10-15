@@ -75,6 +75,37 @@ class TestDataTest {
     }
 
     @Test
+    void theSweepRecognizesOnlySeleniumWrittenTransactions() {
+        assertAll(
+                () -> assertTrue(TestData.isSeleniumTransaction(
+                        TestData.transactionDescription("crud") + " O'Brien \"QA\" & Co.")),
+                () -> assertTrue(TestData.isSeleniumTransaction(
+                        "selenium-202001010000-zz99-filter-income")),
+                () -> assertTrue(TestData.isSeleniumTransaction(
+                        "selenium-dashboard-expense-123e4567-e89b-12d3-a456-426614174000")),
+                () -> assertTrue(TestData.isSeleniumTransaction(
+                        "selenium-special-characters-123e4567-e89b-12d3-a456-426614174000"
+                                + " O'Brien \"QA\" & Co.")),
+                () -> assertFalse(TestData.isSeleniumTransaction("selenium-test")),
+                () -> assertFalse(TestData.isSeleniumTransaction("selenium-notes for March")),
+                () -> assertFalse(TestData.isSeleniumTransaction("Groceries selenium-202001010000-zz99-x")),
+                () -> assertFalse(TestData.isSeleniumTransaction("Selenium-202001010000-zz99-x")),
+                () -> assertFalse(TestData.isSeleniumTransaction(null)));
+    }
+
+    @Test
+    void theSweepRecognizesOnlySeleniumWrittenCategories() {
+        assertAll(
+                () -> assertTrue(TestData.isSeleniumCategory(TestData.categoryName())),
+                () -> assertTrue(TestData.isSeleniumCategory("Sel 202001010000-zz99")),
+                () -> assertFalse(TestData.isSeleniumCategory("Sel 202001010000-zz99 copy")),
+                () -> assertFalse(TestData.isSeleniumCategory("Selling")),
+                () -> assertFalse(TestData.isSeleniumCategory("Sel")),
+                () -> assertFalse(TestData.isSeleniumCategory("Travel")),
+                () -> assertFalse(TestData.isSeleniumCategory(null)));
+    }
+
+    @Test
     void categoryNameCarriesRunId() {
         assertEquals("Sel " + TestData.runId(), TestData.categoryName());
     }

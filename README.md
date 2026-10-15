@@ -51,7 +51,17 @@ Every browser test class is tagged either `read-only` (never changes application
 | `CustomCategoryTest`             | Inline custom category, in-use delete protection, Categories-to-Transactions link, reload, deletion         | Mutating  | `categories`, `transactions`            |
 | `BudgetValidationTest`           | The server rejects a duplicate budget for the same month                                                    | Mutating  | `staging-only` (excluded by default)    |
 
-Browser-free `unit` tests cover configuration parsing, staging access, run IDs, the cleanup registry, XPath escaping, displayed-value parsing, and the tag policy.
+**Optional scenarios** are excluded from every default and CI run. They are run by name when wanted:
+
+| Test class               | Journey                                                                                                 | Data      | Tags and opt-in                                             |
+| ------------------------ | ------------------------------------------------------------------------------------------------------- | --------- | ----------------------------------------------------------- |
+| `CategoriesHistoryTest`  | Show an earlier reporting month on Categories, then Back to current month                               | Read-only | `extended`                                                  |
+| `MobileNavigationTest`   | At 390×844: open the drawer, navigate, open the account menu inside it, log out                         | Read-only | `extended`                                                  |
+| `AccountPreferencesTest` | Change "Transactions per page", reload, and confirm it persisted; cleanup restores the original value   | Mutating  | `extended`                                                  |
+| `ProfilePhotoTest`       | Upload a runtime-generated PNG, check both avatars, reload, remove it, and check the initials fallback  | Mutating  | `profile-photo`, plus `FINTRACK_ENABLE_PROFILE_PHOTO=true`  |
+| `MaintenanceSweepTest`   | Delete records left by interrupted runs (see below)                                                     | Mutating  | `maintenance`, plus `FINTRACK_RUN_MAINTENANCE=true`         |
+
+Browser-free `unit` tests cover configuration parsing, staging access, run IDs and ownership patterns, the cleanup registry, XPath escaping, displayed-value parsing, the image fixture, and the tag policy.
 
 ### Smoke versus regression
 
@@ -60,8 +70,9 @@ Browser-free `unit` tests cover configuration parsing, staging access, run IDs, 
 | Smoke (read-only)            | `mvn test -Dgroups='smoke\|unit' -DexcludedGroups='staging-only,maintenance,profile-photo,mutating'` | About 8 browser executions plus the unit tests |
 | Default regression           | `mvn test`                                                                                | About 14 browser executions plus the unit tests   |
 | Staging-only duplicate check | `mvn test -Dtest=BudgetValidationTest -DexcludedGroups=none` (staging or local only)      | 1 browser execution                               |
+| Optional scenarios           | `mvn test -Dtest=<OptionalClass> -DexcludedGroups=none`                                   | 1 browser execution per class                     |
 
-`pom.xml` excludes `staging-only`, `maintenance` and `profile-photo` from every run unless `-DexcludedGroups` overrides it. Selection never depends on the `regression` tag. Counts change as coverage changes; the Surefire reports for a run are the source of truth.
+`pom.xml` excludes `staging-only`, `maintenance`, `profile-photo` and `extended` from every run unless `-DexcludedGroups` overrides it. Always pair `-DexcludedGroups=none` with `-Dtest`, so it only brings in the class you name; the profile-photo and maintenance tests also skip themselves unless their opt-in variable is `true`. Selection never depends on the `regression` tag. Counts change as coverage changes; the Surefire reports for a run are the source of truth.
 
 ## Environments and Safety
 
@@ -70,6 +81,7 @@ Browser-free `unit` tests cover configuration parsing, staging access, run IDs, 
 | Production-safe            | Everything tagged `read-only`                                                   | Production, staging, local                         |
 | Dedicated account required | Everything tagged `mutating` except staging-only                                | Staging preferred; production only with approval   |
 | Staging or local only      | `BudgetValidationTest`; successful registration (not automated)                 | Staging, local                                     |
+| Optional, opt-in           | `AccountPreferencesTest`, `ProfilePhotoTest` (staging preferred), `MaintenanceSweepTest` | Dedicated account; run manually        |
 | Manual only                | Password change, session-restoration failure, token expiry and cross-tab        | Not automated                                      |
 
 Safety rules built into the suite:
@@ -100,7 +112,8 @@ set -a; source .env; set +a
 | `FINTRACK_VERCEL_SHARE_TOKEN`                          | Protected staging (alternative)  | A Vercel share link or its `_vercel_share` token; may expire            |
 | `FINTRACK_TEST_BUDGET_CATEGORY`                        | Mutating budget tests            | Built-in category reserved for automation budgets (`Travel`)            |
 | `FINTRACK_HEADLESS` or `-Dheadless=true`               | Optional                         | Headless Chrome at 1440×1000; otherwise a maximized window              |
-| `FINTRACK_ENABLE_PROFILE_PHOTO`                        | Optional                         | Reserved for the optional profile-photo round trip (see below)          |
+| `FINTRACK_ENABLE_PROFILE_PHOTO`                        | Optional                         | `true` to run `ProfilePhotoTest` (see below)                            |
+| `FINTRACK_RUN_MAINTENANCE`                             | Optional                         | `true` to run `MaintenanceSweepTest` (see below)                        |
 
 Staging access tokens are refused for any target other than staging. The browser uses the token once to obtain Vercel's access cookie, then leaves that URL, so the token never appears in later URLs, screenshots or page sources.
 
@@ -109,6 +122,7 @@ Staging access tokens are refused for any target other than staging. The browser
 - **Run-specific names.** Each JVM run has one ID such as `202610151530-k3x9`. Transactions are named `selenium-<runId>-<scenario>` and custom categories `Sel <runId>`, so cleanup only ever touches records the current run created.
 - **Cleanup registry.** Tests register cleanup just before saving each record. Cleanup runs after failure evidence is captured and before the browser quits. Order: transactions, then budgets, then categories, newest first within each. Each step reopens its page, runs independently, and treats an already-missing record as cleaned. A failure is reported without hiding the test's own failure.
 - **Renames and deletions.** A renamed transaction is tracked under both names until the rename is confirmed. A record the test deleted itself has its cleanup cancelled.
+- **Account settings.** A changed preference is restored to the value recorded before the test. The profile photo is removed only if the test uploaded it; a test that finds an existing photo stops instead.
 - **Built-in categories** are never edited or deleted.
 
 ### Travel budget reservations
@@ -125,7 +139,23 @@ A budget cannot carry the run ID, so each budget test first checks that its mont
 
 ### Optional profile photo
 
-The `profile-photo` tag is reserved for an optional upload, reload, remove and initials-fallback round trip. It is excluded by default, gated by `FINTRACK_ENABLE_PROFILE_PHOTO=true`, and best run on staging. Its image is generated at runtime (a small solid-color PNG written to a temporary directory) rather than committed, so the repository holds no binary fixtures, personal images or metadata. That round trip is not yet part of the suite.
+`ProfilePhotoTest` uploads a photo, checks the settings and account-menu avatars, reloads, removes it through the "Remove your profile photo?" confirmation, and checks that initials return. It is tagged `profile-photo` (excluded by default), skips unless `FINTRACK_ENABLE_PROFILE_PHOTO=true`, and is best run on staging, which has its own Cloudinary configuration.
+
+- The image is generated at runtime: a 64×64 solid-color PNG under 1 KB, written to a temporary directory with no text or EXIF metadata. The repository holds no binary fixtures or personal images.
+- Once enabled, a missing upload control or a server error (for example photos disabled on the target) fails the test instead of skipping it.
+- The automation account must start without a photo. If it already has one, the test stops and leaves it in place.
+
+### Maintenance sweep
+
+`MaintenanceSweepTest` cleans up after interrupted runs. It is tagged `maintenance` (excluded by default) and skips unless `FINTRACK_RUN_MAINTENANCE=true`:
+
+```bash
+FINTRACK_RUN_MAINTENANCE=true mvn test -Dtest=MaintenanceSweepTest -DexcludedGroups=none
+```
+
+- It deletes only transactions named `selenium-<runId>-…` (or the v1.0.0 format `selenium-…-<UUID>`), then categories named exactly `Sel <runId>`.
+- Travel budgets in the reserved months are reported, never deleted, because a budget cannot carry a run ID.
+- Built-in categories and anything else are never touched. Run it only when no other suite run is in progress.
 
 ## Running the Tests Locally
 
@@ -200,20 +230,20 @@ Surefire reports are written to `target/surefire-reports`. Both directories are 
 
 ```text
 src/test/java/dev/portfolio/fintrack/
-|-- components/   AppShell (sidebar navigation), AccountMenu
+|-- components/   AppShell (sidebar and mobile drawer), AccountMenu
 |-- config/       TestConfig, TargetEnvironment, StagingAccess
 |-- core/         BaseTest, AuthenticatedTest, DriverFactory,
 |                 CleanupRegistry, FailureEvidenceExtension
-|-- data/         TestData (run IDs and record names)
+|-- data/         TestData (run IDs and record names), ImageFixtures
 |-- pages/        BasePage, Login, Register, Dashboard, Transactions,
-|                 Budgets, Categories, DeletionResult
+|                 Budgets, Categories, AccountSettings, DeletionResult
 `-- tests/        Browser journeys and the tag-policy unit test
 ```
 
 ## Automation Design
 
 - **Page readiness.** Pages wait for lazy loading ("Loading page…", "Loading dashboard...", "Loading budgets for …") to finish and for the expected visible `h1`, not just a URL change.
-- **Responsive duplicates.** FinTrack renders navigation in the sidebar and in a mobile drawer. Links are found only in the visible copy, by accessible name.
+- **Responsive duplicates.** FinTrack renders navigation in the sidebar and in a mobile drawer. Links are found only in the visible copy, by accessible name. The mobile test emulates a 390×844 viewport through Chrome's device metrics.
 - **Status banners.** Success messages close after about three seconds; they are captured with fast polling and never waited on to close.
 - **Native confirmations** are accepted explicitly and their exact text is asserted. An abandoned dialog is dismissed, never accepted.
 - **Selectors.** Stable IDs and `data-testid` attributes first, then accessible names and scoped XPath. One shared helper escapes text containing quotes.
@@ -224,4 +254,4 @@ src/test/java/dev/portfolio/fintrack/
 
 The suite has been refreshed for FinTrack v1.4.0: current page objects and application shell, consolidated authentication and transaction journeys, budget and custom-category coverage, run-specific test data with registry cleanup, explicit target selection, and read-only automatic CI.
 
-Possible future work: mobile navigation coverage, account-preference persistence, the optional profile-photo round trip, and earlier-month Categories navigation.
+Optional scenarios cover historical Categories, mobile navigation, account preferences, the profile-photo round trip and a maintenance sweep; they never run by default.

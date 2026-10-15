@@ -27,7 +27,7 @@
       Left out of the default (full regression) run. Override to include, e.g.
       -DexcludedGroups=none -Dtest=BudgetValidationTest on staging.
     -->
-    <excludedGroups>staging-only,maintenance,profile-photo</excludedGroups>
+    <excludedGroups>staging-only,maintenance,profile-photo,extended</excludedGroups>
   </properties>
 
   <dependencies>

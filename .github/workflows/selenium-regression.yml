@@ -146,10 +146,10 @@ jobs:
             mvn --batch-mode --no-transfer-progress clean test \
               -Dheadless=true \
               -Dgroups='smoke|unit' \
-              -DexcludedGroups='staging-only,maintenance,profile-photo,mutating'
+              -DexcludedGroups='staging-only,maintenance,profile-photo,extended,mutating'
           else
             # Every default test; pom.xml excludes staging-only,
-            # maintenance and profile-photo.
+            # maintenance, profile-photo and extended.
             mvn --batch-mode --no-transfer-progress clean test \
               -Dheadless=true
           fi

@@ -1,5 +1,6 @@
 package dev.portfolio.fintrack.core;
 
+import java.util.Map;
 import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.UnexpectedAlertBehaviour;
 import org.openqa.selenium.WebDriver;
@@ -43,5 +44,29 @@ public final class DriverFactory {
         }
 
         return new ChromeDriver(options);
+    }
+
+    /**
+     * Emulates a phone-sized viewport (for example 390×844) through Chrome's
+     * device metrics. A desktop window cannot be resized this narrow on every
+     * platform, so the window itself is left alone.
+     */
+    public static void emulateMobileViewport(
+            WebDriver driver,
+            int width,
+            int height) {
+
+        if (!(driver instanceof ChromeDriver chromeDriver)) {
+            throw new IllegalStateException(
+                    "Mobile viewport emulation needs ChromeDriver");
+        }
+
+        chromeDriver.executeCdpCommand(
+                "Emulation.setDeviceMetricsOverride",
+                Map.of(
+                        "width", width,
+                        "height", height,
+                        "deviceScaleFactor", 3,
+                        "mobile", true));
     }
 }

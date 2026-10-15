@@ -7,6 +7,7 @@ import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.CleanupRegistry.Bucket;
 import dev.portfolio.fintrack.core.CleanupRegistry.Registration;
 import dev.portfolio.fintrack.data.TestData;
+import dev.portfolio.fintrack.pages.AccountSettingsPage;
 import dev.portfolio.fintrack.pages.BudgetsPage;
 import dev.portfolio.fintrack.pages.CategoriesPage;
 import dev.portfolio.fintrack.pages.DashboardPage;
@@ -109,6 +110,40 @@ public abstract class AuthenticatedTest extends BaseTest {
                     new CategoriesPage(driver)
                             .open()
                             .deleteIfPresent(name);
+                });
+    }
+
+    /** Restores the "Transactions per page" preference recorded before the test changed it. */
+    protected Registration restorePageSizeAfterTest(int originalPageSize) {
+        return cleanupRegistry.register(
+                Bucket.ACCOUNT_SETTINGS,
+                "transactions per page " + originalPageSize,
+                () -> {
+                    restoreSignedInSession();
+                    AccountSettingsPage settings = new AccountSettingsPage(driver).open();
+
+                    if (settings.transactionPageSize() != originalPageSize) {
+                        settings.saveTransactionPageSize(originalPageSize);
+                    }
+                });
+    }
+
+    /**
+     * Removes the profile photo after the test. Register it only after
+     * confirming the account had no photo, so a photo the test did not
+     * upload is never removed.
+     */
+    protected Registration removeProfilePhotoAfterTest() {
+        return cleanupRegistry.register(
+                Bucket.ACCOUNT_SETTINGS,
+                "profile photo",
+                () -> {
+                    restoreSignedInSession();
+                    AccountSettingsPage settings = new AccountSettingsPage(driver).open();
+
+                    if (settings.hasPhoto()) {
+                        settings.removePhoto();
+                    }
                 });
     }
 

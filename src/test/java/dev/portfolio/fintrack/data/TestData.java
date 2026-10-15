@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.regex.Pattern;
 import java.util.random.RandomGenerator;
 
 /**
@@ -32,6 +33,19 @@ public final class TestData {
     private static final String RUN_ID =
             newRunId(Clock.systemUTC(), new SecureRandom());
 
+    /** selenium-<runId>-<scenario>[ suffix], from any run. */
+    private static final Pattern RUN_TRANSACTION = Pattern.compile(
+            "^selenium-\\d{12}-[a-z0-9]{4}-[a-z0-9][a-z0-9-]*( .*)?$");
+
+    /** selenium-<scenario>-<UUID>[ suffix], written by suite v1.0.0. */
+    private static final Pattern LEGACY_TRANSACTION = Pattern.compile(
+            "^selenium-[a-z0-9-]+-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}"
+                    + "-[0-9a-f]{4}-[0-9a-f]{12}( .*)?$");
+
+    /** Sel <runId>, from any run. */
+    private static final Pattern RUN_CATEGORY = Pattern.compile(
+            "^Sel \\d{12}-[a-z0-9]{4}$");
+
     private TestData() {
         // Utility class; prevent object creation.
     }
@@ -56,6 +70,21 @@ public final class TestData {
         return value != null
                 && (value.startsWith(transactionPrefix())
                         || value.equals(categoryName()));
+    }
+
+    /**
+     * Whether a transaction description was written by this suite in any run,
+     * including suite v1.0.0. Used only by the maintenance sweep.
+     */
+    public static boolean isSeleniumTransaction(String description) {
+        return description != null
+                && (RUN_TRANSACTION.matcher(description).matches()
+                        || LEGACY_TRANSACTION.matcher(description).matches());
+    }
+
+    /** Whether a category name was written by this suite in any run. */
+    public static boolean isSeleniumCategory(String name) {
+        return name != null && RUN_CATEGORY.matcher(name).matches();
     }
 
     static String newRunId(Clock clock, RandomGenerator random) {

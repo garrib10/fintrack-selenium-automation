@@ -1,6 +1,7 @@
 package dev.portfolio.fintrack.tests;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.File;
@@ -72,14 +73,28 @@ class TestTagPolicyTest {
         }));
     }
 
+    /** Groups pom.xml excludes by default; none of them may run in smoke. */
+    private static final Set<String> OPTIONAL_GROUPS =
+            Set.of("staging-only", "maintenance", "profile-photo", "extended");
+
     @Test
-    void stagingOnlyTestsAreNeverPartOfSmoke() throws Exception {
+    void optionalTestsAreNeverPartOfSmoke() throws Exception {
         assertAll(browserTestClasses().stream()
-                .filter(testClass -> classTags(testClass).contains("staging-only"))
+                .filter(testClass -> classTags(testClass).stream()
+                        .anyMatch(OPTIONAL_GROUPS::contains))
                 .map(testClass -> () -> assertFalse(
                         classTags(testClass).contains(SMOKE),
                         testClass.getSimpleName()
-                                + " is staging-only and must not be smoke")));
+                                + " is optional and must not be smoke")));
+    }
+
+    @Test
+    void pomExcludesEveryOptionalGroupByDefault() throws Exception {
+        String pom = java.nio.file.Files.readString(java.nio.file.Path.of("pom.xml"));
+        String excluded = pom.replaceAll("(?s).*<excludedGroups>([^<]*)</excludedGroups>.*", "$1");
+
+        assertEquals(OPTIONAL_GROUPS, Set.of(excluded.split("\\s*,\\s*")),
+                "pom.xml excludedGroups must list exactly the optional groups");
     }
 
     /** Concrete BaseTest subclasses compiled into this test package. */

@@ -38,6 +38,9 @@ public final class CategoriesPage extends BasePage {
             "//p[starts-with(normalize-space(.), 'You don')"
                     + " and contains(normalize-space(.), 'have any categories yet.')]");
 
+    private static final By PERIOD_SUMMARY = By.xpath(
+            "//h1[@id='categories-heading']/following-sibling::p[1]");
+
     private static final String CUSTOM_BADGE = "Custom";
 
     public CategoriesPage(WebDriver driver) {
@@ -180,6 +183,39 @@ public final class CategoriesPage extends BasePage {
         return YearMonth.of(
                 Integer.parseInt(selectedValue(PERIOD_YEAR_SELECT)),
                 Integer.parseInt(selectedValue(PERIOD_MONTH_SELECT)));
+    }
+
+    /**
+     * The line under the heading naming the shown month, e.g. "How each
+     * category is used in October 2026: …" ("was used" for earlier months).
+     */
+    public String periodSummary() {
+        return waitForVisibleText(PERIOD_SUMMARY);
+    }
+
+    /**
+     * Names of the cards matching a partial search, e.g. "Sel ". Read-only;
+     * returns an empty list when the account has no categories to search.
+     */
+    public List<String> categoryNamesMatching(String query) {
+        if (driver.findElements(SEARCH_INPUT).stream().noneMatch(BasePage::isDisplayedSafely)) {
+            return List.of();
+        }
+
+        enterText(SEARCH_INPUT, query);
+
+        By cards = By.xpath("//article[starts-with(@aria-labelledby, 'category-')]//h3");
+
+        waitUntil(ignored -> !isLoadingIndicatorDisplayed()
+                && (!driver.findElements(cards).isEmpty()
+                        || driver.findElements(NO_SEARCH_RESULTS)
+                                .stream()
+                                .anyMatch(BasePage::isDisplayedSafely)));
+
+        return driver.findElements(cards)
+                .stream()
+                .map(BasePage::normalizedText)
+                .toList();
     }
 
     public boolean isBackToCurrentMonthDisplayed() {

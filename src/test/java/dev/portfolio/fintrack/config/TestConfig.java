@@ -113,6 +113,18 @@ public final class TestConfig {
                         "false"));
     }
 
+    /** Opt-in for the profile-photo round trip; staging is preferred. */
+    public static boolean profilePhotoEnabled() {
+        return Boolean.parseBoolean(
+                readOptional("FINTRACK_ENABLE_PROFILE_PHOTO", "false"));
+    }
+
+    /** Opt-in for the maintenance sweep, on top of its excluded tag. */
+    public static boolean maintenanceEnabled() {
+        return Boolean.parseBoolean(
+                readOptional("FINTRACK_RUN_MAINTENANCE", "false"));
+    }
+
     public static boolean headless() {
         String systemProperty =
                 System.getProperty("headless");
