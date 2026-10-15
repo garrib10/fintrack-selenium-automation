@@ -4,101 +4,64 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import java.time.YearMonth;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.AuthenticatedTest;
+import dev.portfolio.fintrack.core.CleanupRegistry.Registration;
 import dev.portfolio.fintrack.pages.BudgetsPage;
 import dev.portfolio.fintrack.pages.BudgetsPage.BudgetCard;
-import org.junit.jupiter.api.Tag;
+import dev.portfolio.fintrack.pages.DeletionResult;
 
+/**
+ * One budget lifecycle in the automation category's reserved CRUD period
+ * (next month). The test fails rather than deleting a budget it did not
+ * create.
+ */
 @Tag("budgets")
 @Tag("regression")
 class BudgetTest extends AuthenticatedTest {
 
     @Test
-    void userCanCreateEditCancelUpdateAndDeleteBudget() {
+    void userCanCreateEditAndDeleteBudget() {
         String category = TestConfig.testBudgetCategory();
-        YearMonth period = YearMonth.now().plusMonths(1);
+        YearMonth period = crudBudgetPeriod();
 
-        BudgetsPage budgetsPage = new BudgetsPage(driver).open();
+        BudgetsPage budgetsPage = requireFreeBudgetPeriod(category, period);
 
-        boolean budgetExists = false;
+        // Registered before saving: the period was free, so the only budget
+        // cleanup could find is the one this test creates.
+        Registration budgetCleanup = cleanUpBudgetAfterTest(category, period);
 
-        try {
-            budgetsPage.deleteIfPresent(category, period);
+        String createdStatus = budgetsPage.createBudget(category, "250.00", period);
+        BudgetCard created = budgetsPage.budget(category, period);
 
-            budgetsPage.createBudget(
-                    category,
-                    "250.00",
-                    period);
+        assertAll(
+                () -> assertEquals(BudgetsPage.CREATED_MESSAGE, createdStatus),
+                () -> assertEquals(category, created.category()),
+                () -> assertEquals("$250.00", created.monthlyLimit()));
 
-            budgetExists = true;
+        String updatedStatus = budgetsPage
+                .startEditing(category, period)
+                .updateBudget(category, "325.00", period);
 
-            BudgetCard createdBudget =
-                    budgetsPage.budget(category, period);
+        BudgetCard updated = budgetsPage.budget(category, period);
 
-            assertAll(
-                    () -> assertEquals(
-                            category,
-                            createdBudget.category(),
-                            "Expected the created budget category"),
-                    () -> assertEquals(
-                            "$250.00",
-                            createdBudget.monthlyLimit(),
-                            "Expected the created monthly limit"));
+        assertAll(
+                () -> assertEquals(BudgetsPage.UPDATED_MESSAGE, updatedStatus),
+                () -> assertEquals("$325.00", updated.monthlyLimit()));
 
-            budgetsPage
-                    .startEditing(category, period)
-                    .changeMonthlyLimitDuringEdit("275.00")
-                    .cancelEdit();
+        DeletionResult deletion = budgetsPage.deleteBudget(category, period);
 
-            BudgetCard afterCancel =
-                    budgetsPage.budget(category, period);
+        assertAll(
+                () -> assertEquals(
+                        "Delete the " + category + " budget?",
+                        deletion.confirmation()),
+                () -> assertEquals(BudgetsPage.DELETED_MESSAGE, deletion.statusMessage()),
+                () -> assertFalse(
+                        budgetsPage.selectPeriod(period).isBudgetPresent(category, period),
+                        "Expected the deleted budget to be gone"));
 
-            assertEquals(
-                    "$250.00",
-                    afterCancel.monthlyLimit(),
-                    "Cancel should not persist the edited limit");
-
-            budgetsPage
-                    .startEditing(category, period)
-                    .updateBudget(
-                            category,
-                            "325.00",
-                            period);
-
-            BudgetCard updatedBudget =
-                    budgetsPage.budget(category, period);
-
-            assertEquals(
-                    "$325.00",
-                    updatedBudget.monthlyLimit(),
-                    "Expected the updated monthly limit");
-
-            String confirmation =
-                    budgetsPage.deleteBudget(
-                            category,
-                            period)
-                            .confirmation();
-
-            budgetExists = false;
-
-            assertAll(
-                    () -> assertEquals(
-                            "Delete the " + category + " budget?",
-                            confirmation,
-                            "Expected the correct deletion confirmation"),
-                    () -> assertFalse(
-                            budgetsPage.isBudgetPresent(
-                                    category,
-                                    period),
-                            "Expected the deleted budget to disappear"));
-        } finally {
-            if (budgetExists) {
-                budgetsPage.deleteIfPresent(
-                        category,
-                        period);
-            }
-        }
+        cleanupNoLongerNeeded(budgetCleanup);
     }
 }

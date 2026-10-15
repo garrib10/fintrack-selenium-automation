@@ -6,8 +6,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.support.ui.Select;
 
 public final class TransactionsPage extends BasePage {
 
@@ -216,6 +218,33 @@ public final class TransactionsPage extends BasePage {
     click(APPLY_FILTERS_BUTTON);
     waitForHistoryToSettle();
     return this;
+  }
+
+  /**
+   * Whether the category filter offers {@code category}. Categories load
+   * asynchronously, so this waits for the option before answering false.
+   */
+  public boolean hasFilterCategory(String category) {
+    try {
+      newWait().until(ignored -> new Select(waitUntilVisible(FILTER_CATEGORY_SELECT))
+          .getOptions()
+          .stream()
+          .anyMatch(option -> category.equals(normalizedText(option))));
+
+      return true;
+    } catch (TimeoutException exception) {
+      return false;
+    }
+  }
+
+  /** Descriptions of the rows the history shows once it has finished loading. */
+  public List<String> visibleTransactionDescriptions() {
+    waitForHistoryToSettle();
+
+    return driver.findElements(TRANSACTION_ROWS)
+        .stream()
+        .map(row -> normalizedText(row.findElements(By.tagName("td")).get(1)))
+        .toList();
   }
 
   /** The visible name of the selected category filter, "All categories" when unset. */

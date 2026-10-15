@@ -112,6 +112,56 @@ public abstract class AuthenticatedTest extends BaseTest {
                 });
     }
 
+    /*
+     * Budget periods reserved for automation on the dedicated account, all in
+     * the automation budget category (FINTRACK_TEST_BUDGET_CATEGORY, Travel):
+     *
+     *   current month     Budget-to-Dashboard integration
+     *   next month        budget create, edit and delete
+     *   month after next  duplicate-budget check (staging only)
+     *
+     * Each test uses its own period, so serial runs never collide.
+     */
+
+    protected static YearMonth dashboardBudgetPeriod() {
+        return YearMonth.now();
+    }
+
+    protected static YearMonth crudBudgetPeriod() {
+        return YearMonth.now().plusMonths(1);
+    }
+
+    protected static YearMonth duplicateBudgetPeriod() {
+        return YearMonth.now().plusMonths(2);
+    }
+
+    /**
+     * Opens Budgets on a reserved period and fails if a budget already exists
+     * there. A budget cannot carry this run's ID, so one found here was not
+     * created by this run and is never deleted automatically; remove it by
+     * hand before rerunning.
+     */
+    protected BudgetsPage requireFreeBudgetPeriod(
+            String category,
+            YearMonth period) {
+
+        BudgetsPage budgetsPage = new BudgetsPage(driver)
+                .open()
+                .selectPeriod(period);
+
+        if (budgetsPage.isBudgetPresent(category, period)) {
+            throw new IllegalStateException(
+                    "A "
+                            + category
+                            + " budget already exists for "
+                            + period
+                            + ". This run did not create it, so it was left"
+                            + " untouched; remove it by hand and rerun.");
+        }
+
+        return budgetsPage;
+    }
+
     /**
      * Cancels registered cleanup the test no longer needs: the test deleted the
      * record itself, or a rename was saved and the old name no longer exists.
