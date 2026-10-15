@@ -222,6 +222,22 @@ When a browser test fails, `FailureEvidenceExtension` writes a screenshot, the p
 
 Surefire reports are written to `target/surefire-reports`. Both directories are generated, excluded from Git, and removed by `mvn clean`.
 
+### Screenshots from the FinTrack v1.4.0 refresh
+
+Captured on staging with temporary, run-owned data that was deleted afterwards.
+
+| Budget progress on the Dashboard | Special characters in transaction history |
+| --- | --- |
+| <img src="docs/images/fintrack-v1.4.0-refresh/desktop-dashboard-budget-progress.png" width="420" alt="Dashboard with a Travel budget at 20 percent used" /> | <img src="docs/images/fintrack-v1.4.0-refresh/desktop-transactions-special-characters.png" width="420" alt="Transaction history showing a description with an apostrophe, quotes and an ampersand" /> |
+
+| Custom category delete blocked while in use | Earlier reporting month on Categories |
+| --- | --- |
+| <img src="docs/images/fintrack-v1.4.0-refresh/desktop-category-delete-blocked.png" width="420" alt="Custom category with Delete unavailable and the reason Used by 1 transaction" /> | <img src="docs/images/fintrack-v1.4.0-refresh/desktop-categories-earlier-month.png" width="420" alt="Categories showing September 2026 with Back to current month" /> |
+
+| Mobile Dashboard, 390×844 | Mobile navigation drawer |
+| --- | --- |
+| <img src="docs/images/fintrack-v1.4.0-refresh/mobile-dashboard.png" width="200" alt="Phone-sized Dashboard with stacked summary cards" /> | <img src="docs/images/fintrack-v1.4.0-refresh/mobile-navigation-drawer.png" width="200" alt="Phone-sized navigation drawer with the account menu at the bottom" /> |
+
 ![Successful GitHub Actions Selenium regression](docs/images/selenium-regression-success.png)
 
 ![Successful pull request checks](docs/images/pr-required-checks.png)
