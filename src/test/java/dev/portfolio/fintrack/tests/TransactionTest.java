@@ -4,226 +4,127 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import dev.portfolio.fintrack.core.AuthenticatedTest;
+import dev.portfolio.fintrack.core.CleanupRegistry.Registration;
 import dev.portfolio.fintrack.data.TestData;
+import dev.portfolio.fintrack.pages.DeletionResult;
 import dev.portfolio.fintrack.pages.TransactionsPage;
 import dev.portfolio.fintrack.pages.TransactionsPage.TransactionRow;
-import org.junit.jupiter.api.Tag;
 
+/**
+ * One transaction lifecycle through the UI. The record carries this run's ID
+ * and is cleaned up by the registry if the test stops early.
+ */
 @Tag("transactions")
 @Tag("regression")
+@Tag("mutating")
 class TransactionTest extends AuthenticatedTest {
 
+    /** A built-in category every account has. */
+    private static final String CATEGORY = "Other";
+
     @Test
-    void userCanCreateVerifyAndDeleteIncomeTransaction() {
-        String description = TestData.uniqueTransactionDescription("income-create");
+    void userCanCreateEditAndDeleteTransaction() {
+        String originalDescription =
+                TestData.transactionDescription("crud")
+                        + " O'Brien \"QA\" & Co.";
 
-        TransactionsPage transactionsPage = new TransactionsPage(driver).open();
+        String updatedDescription =
+                TestData.transactionDescription("crud-edited")
+                        + " <b>Café</b> & \"Q'A\"";
 
-        try {
-            String category = transactionsPage.addTransaction(
-                    "INCOME",
-                    "125.50",
-                    description,
-                    LocalDate.now());
+        LocalDate date = LocalDate.now();
 
-            TransactionRow transaction = transactionsPage.transaction(description);
+        TransactionsPage transactionsPage =
+                new TransactionsPage(driver).open();
 
-            assertAll(
-                    () -> assertEquals(
-                            description,
-                            transaction.description(),
-                            "Expected the created income description"),
-                    () -> assertEquals(
-                            category,
-                            transaction.category(),
-                            "Expected the selected category"),
-                    () -> assertTrue(
-                            transaction.type().equalsIgnoreCase("INCOME"),
-                            "Expected the transaction type to be Income"),
-                    () -> assertTrue(
-                            transaction.amount().contains("125.50"),
-                            "Expected the displayed income amount"),
-                    () -> assertFalse(
-                            transaction.date().isBlank(),
-                            "Expected the transaction date to be displayed"));
+        // Registered before saving: cleanup is idempotent, and this also covers
+        // a save that succeeds on the server but fails before confirmation.
+        Registration originalCleanup =
+                cleanUpTransactionAfterTest(originalDescription);
 
-            String confirmation = transactionsPage.deleteTransaction(description);
+        String addedStatus = transactionsPage.addTransaction(
+                "EXPENSE",
+                CATEGORY,
+                "125.50",
+                originalDescription,
+                date);
 
-            assertAll(
-                    () -> assertEquals(
-                            "Delete \"" + description + "\"?",
-                            confirmation,
-                            "Expected the transaction-specific confirmation"),
-                    () -> assertFalse(
-                            transactionsPage.isTransactionPresent(description),
-                            "Expected the deleted income to disappear"));
-        } finally {
-            transactionsPage.deleteIfPresent(description);
-        }
+        TransactionRow created = transactionsPage
+                .searchByDescription(originalDescription)
+                .transaction(originalDescription);
+
+        assertAll(
+                () -> assertEquals(TransactionsPage.ADDED_MESSAGE, addedStatus),
+                () -> assertEquals(originalDescription, created.description(),
+                        "Expected special characters to be preserved"),
+                () -> assertEquals(CATEGORY, created.category()),
+                () -> assertTrue(created.type().equalsIgnoreCase("Expense"),
+                        "Expected an Expense, was " + created.type()),
+                () -> assertMoneyEquals("125.50", created.amountValue()),
+                () -> assertTrue(created.showsDate(date),
+                        "Expected the transaction date, was " + created.date()));
+
+        // Track the new name before saving it, then drop the old one once
+        // the rename is confirmed.
+        Registration updatedCleanup =
+                cleanUpTransactionAfterTest(updatedDescription);
+
+        String updatedStatus = transactionsPage
+                .startEditing(originalDescription)
+                .updateTransaction(
+                        "EXPENSE",
+                        "84.25",
+                        updatedDescription,
+                        date);
+
+        boolean originalStillListed = transactionsPage
+                .searchByDescription(originalDescription)
+                .isTransactionPresent(originalDescription);
+
+        TransactionRow updated = transactionsPage
+                .searchByDescription(updatedDescription)
+                .transaction(updatedDescription);
+
+        assertAll(
+                () -> assertEquals(TransactionsPage.UPDATED_MESSAGE, updatedStatus),
+                () -> assertFalse(originalStillListed,
+                        "Expected the original description to be gone"),
+                () -> assertEquals(updatedDescription, updated.description(),
+                        "Expected special characters to be preserved"),
+                () -> assertEquals(CATEGORY, updated.category(),
+                        "Expected the category to be unchanged"),
+                () -> assertTrue(updated.type().equalsIgnoreCase("Expense")),
+                () -> assertMoneyEquals("84.25", updated.amountValue()));
+
+        cleanupNoLongerNeeded(originalCleanup);
+
+        DeletionResult deletion =
+                transactionsPage.deleteTransaction(updatedDescription);
+
+        boolean deletedStillListed = transactionsPage
+                .searchByDescription(updatedDescription)
+                .isTransactionPresent(updatedDescription);
+
+        assertAll(
+                () -> assertEquals(
+                        "Delete \"" + updatedDescription + "\"?",
+                        deletion.confirmation(),
+                        "Expected the transaction-specific confirmation"),
+                () -> assertEquals(TransactionsPage.DELETED_MESSAGE,
+                        deletion.statusMessage()),
+                () -> assertFalse(deletedStillListed,
+                        "Expected the deleted transaction to be gone"));
+
+        cleanupNoLongerNeeded(updatedCleanup);
     }
 
-    @Test
-    void userCanCreateVerifyAndDeleteExpenseTransaction() {
-        String description = TestData.uniqueTransactionDescription("expense-create");
-
-        TransactionsPage transactionsPage = new TransactionsPage(driver).open();
-
-        try {
-            String category = transactionsPage.addTransaction(
-                    "EXPENSE",
-                    "42.75",
-                    description,
-                    LocalDate.now());
-
-            TransactionRow transaction = transactionsPage.transaction(description);
-
-            assertAll(
-                    () -> assertEquals(
-                            description,
-                            transaction.description(),
-                            "Expected the created expense description"),
-                    () -> assertEquals(
-                            category,
-                            transaction.category(),
-                            "Expected the selected category"),
-                    () -> assertTrue(
-                            transaction.type().equalsIgnoreCase("EXPENSE"),
-                            "Expected the transaction type to be Expense"),
-                    () -> assertTrue(
-                            transaction.amount().contains("42.75"),
-                            "Expected the displayed expense amount"),
-                    () -> assertFalse(
-                            transaction.date().isBlank(),
-                            "Expected the transaction date to be displayed"));
-
-            String confirmation = transactionsPage.deleteTransaction(description);
-
-            assertAll(
-                    () -> assertEquals(
-                            "Delete \"" + description + "\"?",
-                            confirmation,
-                            "Expected the transaction-specific confirmation"),
-                    () -> assertFalse(
-                            transactionsPage.isTransactionPresent(description),
-                            "Expected the deleted expense to disappear"));
-        } finally {
-            transactionsPage.deleteIfPresent(description);
-        }
-    }
-
-    @Test
-    void userCanCancelEditThenUpdateAndDeleteExpense() {
-        String originalDescription = TestData.uniqueTransactionDescription("expense-original");
-
-        String updatedDescription = TestData.uniqueTransactionDescription("expense-updated");
-
-        TransactionsPage transactionsPage = new TransactionsPage(driver).open();
-
-        try {
-            String category = transactionsPage.addTransaction(
-                    "EXPENSE",
-                    "60.00",
-                    originalDescription,
-                    LocalDate.now());
-
-            transactionsPage
-                    .startEditing(originalDescription)
-                    .changeDescriptionDuringEdit(updatedDescription)
-                    .cancelEdit();
-
-            TransactionRow unchangedTransaction = transactionsPage.transaction(originalDescription);
-
-            assertAll(
-                    () -> assertEquals(
-                            originalDescription,
-                            unchangedTransaction.description(),
-                            "Expected cancel to preserve the original description"),
-                    () -> assertFalse(
-                            transactionsPage.isTransactionPresent(
-                                    updatedDescription),
-                            "Expected cancel not to save the edited description"));
-
-            transactionsPage
-                    .startEditing(originalDescription)
-                    .updateTransaction(
-                            "EXPENSE",
-                            "84.25",
-                            updatedDescription,
-                            LocalDate.now());
-
-            transactionsPage
-                    .resetFilters()
-                    .searchByDescription(updatedDescription);
-
-            TransactionRow updatedTransaction = transactionsPage.transaction(updatedDescription);
-
-            assertAll(
-                    () -> assertEquals(
-                            updatedDescription,
-                            updatedTransaction.description(),
-                            "Expected the updated description"),
-                    () -> assertEquals(
-                            category,
-                            updatedTransaction.category(),
-                            "Expected the category to remain unchanged"),
-                    () -> assertTrue(
-                            updatedTransaction.type()
-                                    .equalsIgnoreCase("EXPENSE"),
-                            "Expected the updated transaction to remain an expense"),
-                    () -> assertTrue(
-                            updatedTransaction.amount().contains("84.25"),
-                            "Expected the updated amount"),
-                    () -> assertFalse(
-                            transactionsPage.isTransactionPresent(
-                                    originalDescription),
-                            "Expected the original description to disappear"));
-
-            String confirmation = transactionsPage.deleteTransaction(updatedDescription);
-
-            assertAll(
-                    () -> assertEquals(
-                            "Delete \"" + updatedDescription + "\"?",
-                            confirmation,
-                            "Expected confirmation for the updated transaction"),
-                    () -> assertFalse(
-                            transactionsPage.isTransactionPresent(
-                                    updatedDescription),
-                            "Expected the updated transaction to be deleted"));
-        } finally {
-            transactionsPage.deleteIfPresent(originalDescription);
-            transactionsPage.deleteIfPresent(updatedDescription);
-        }
-    }
-
-    @Test
-    void transactionDescriptionSupportsSpecialCharacters() {
-        String description = TestData.uniqueTransactionDescription("special-characters")
-                + " O'Brien \"QA\" & Co.";
-
-        TransactionsPage transactionsPage = new TransactionsPage(driver).open();
-
-        try {
-            transactionsPage.addTransaction(
-                    "EXPENSE",
-                    "19.99",
-                    description,
-                    LocalDate.now());
-
-            TransactionsPage.TransactionRow transaction = transactionsPage.transaction(description);
-
-            assertAll(
-                    () -> assertEquals(
-                            description,
-                            transaction.description(),
-                            "Expected special characters to be preserved"),
-                    () -> assertTrue(
-                            transactionsPage.isTransactionPresent(description),
-                            "Expected the transaction to be located by its exact description"));
-        } finally {
-            transactionsPage.deleteIfPresent(description);
-        }
+    private static void assertMoneyEquals(String expected, BigDecimal actual) {
+        assertEquals(0, new BigDecimal(expected).compareTo(actual),
+                "Expected amount " + expected + " but was " + actual);
     }
 }

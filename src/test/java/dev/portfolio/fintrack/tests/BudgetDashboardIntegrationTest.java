@@ -1,24 +1,32 @@
 package dev.portfolio.fintrack.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.util.UUID;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.AuthenticatedTest;
+import dev.portfolio.fintrack.data.TestData;
 import dev.portfolio.fintrack.pages.BudgetsPage;
 import dev.portfolio.fintrack.pages.DashboardPage;
 import dev.portfolio.fintrack.pages.DashboardPage.DashboardBudget;
 import dev.portfolio.fintrack.pages.DashboardPage.DashboardSummary;
 import dev.portfolio.fintrack.pages.TransactionsPage;
-import org.junit.jupiter.api.Tag;
 
+/**
+ * A current-month expense in the automation budget category must move the
+ * Dashboard totals and that category's Monthly Budgets card. Assertions
+ * compare before-and-after values, so other account data does not matter.
+ */
 @Tag("budgets")
 @Tag("dashboard")
 @Tag("integration")
 @Tag("regression")
+@Tag("mutating")
 class BudgetDashboardIntegrationTest extends AuthenticatedTest {
 
     private static final BigDecimal BUDGET_LIMIT =
@@ -29,126 +37,106 @@ class BudgetDashboardIntegrationTest extends AuthenticatedTest {
 
     @Test
     void currentMonthExpenseUpdatesDashboardAndBudgetProgress() {
-        String category =
-                TestConfig.testBudgetCategory();
+        String category = TestConfig.testBudgetCategory();
+        YearMonth currentPeriod = dashboardBudgetPeriod();
 
-        YearMonth currentPeriod =
-                YearMonth.now();
-
-        LocalDate transactionDate =
-                currentPeriod.atDay(15);
+        // Today, never a later day, so the expense always counts this month.
+        LocalDate transactionDate = LocalDate.now();
 
         String description =
-                "selenium-dashboard-expense-"
-                        + UUID.randomUUID();
+                TestData.transactionDescription("dashboard-expense");
 
         BudgetsPage budgetsPage =
-                new BudgetsPage(driver).open();
+                requireFreeBudgetPeriod(category, currentPeriod);
 
-        /*
-         * Travel is reserved for this suite. Remove only a stale
-         * automation budget from an interrupted previous run.
-         */
-        budgetsPage.deleteIfPresent(
+        // Only after confirming the period was free, so cleanup can never
+        // remove a budget this run did not create.
+        cleanUpBudgetAfterTest(category, currentPeriod);
+        budgetsPage.createBudget(
                 category,
+                BUDGET_LIMIT.toPlainString(),
                 currentPeriod);
 
-        try {
-            budgetsPage.createBudget(
-                    category,
-                    BUDGET_LIMIT.toPlainString(),
-                    currentPeriod);
+        DashboardPage dashboardPage =
+                new DashboardPage(driver).open();
 
-            DashboardPage dashboardPage =
-                    new DashboardPage(driver).open();
+        DashboardSummary baselineSummary =
+                dashboardPage.summary();
 
-            DashboardSummary baselineSummary =
-                    dashboardPage.summary();
+        DashboardBudget baselineBudget =
+                dashboardPage.budget(category);
 
-            DashboardBudget baselineBudget =
-                    dashboardPage.budget(category);
+        cleanUpTransactionAfterTest(description);
+        new TransactionsPage(driver)
+                .open()
+                .addTransaction(
+                        "EXPENSE",
+                        category,
+                        EXPENSE_AMOUNT.toPlainString(),
+                        description,
+                        transactionDate);
 
-            new TransactionsPage(driver)
-                    .open()
-                    .addTransactionWithCategory(
-                            "EXPENSE",
-                            category,
-                            EXPENSE_AMOUNT.toPlainString(),
-                            description,
-                            transactionDate);
+        dashboardPage.open();
 
-            dashboardPage.open();
+        DashboardSummary updatedSummary =
+                dashboardPage.summary();
 
-            DashboardSummary updatedSummary =
-                    dashboardPage.summary();
+        DashboardBudget updatedBudget =
+                dashboardPage.budget(category);
 
-            DashboardBudget updatedBudget =
-                    dashboardPage.budget(category);
+        BigDecimal expectedUtilizationIncrease =
+                EXPENSE_AMOUNT
+                        .multiply(new BigDecimal("100"))
+                        .divide(BUDGET_LIMIT, 1, RoundingMode.HALF_UP);
 
-            assertMoneyEquals(
-                    baselineSummary.totalExpenses()
-                            .add(EXPENSE_AMOUNT),
-                    updatedSummary.totalExpenses(),
-                    "Expected total expenses to increase");
+        assertAll(
+                () -> assertMoneyEquals(
+                        baselineSummary.totalExpenses().add(EXPENSE_AMOUNT),
+                        updatedSummary.totalExpenses(),
+                        "Expected total expenses to increase"),
+                () -> assertMoneyEquals(
+                        baselineSummary.monthlyExpenses().add(EXPENSE_AMOUNT),
+                        updatedSummary.monthlyExpenses(),
+                        "Expected monthly expenses to increase"),
+                () -> assertMoneyEquals(
+                        baselineSummary.currentBalance().subtract(EXPENSE_AMOUNT),
+                        updatedSummary.currentBalance(),
+                        "Expected current balance to decrease"),
+                () -> assertMoneyEquals(
+                        BUDGET_LIMIT,
+                        updatedBudget.monthlyLimit(),
+                        "Expected the card to show this test's budget"),
+                () -> assertMoneyEquals(
+                        baselineBudget.spent().add(EXPENSE_AMOUNT),
+                        updatedBudget.spent(),
+                        "Expected budget spending to increase"),
+                () -> assertMoneyEquals(
+                        baselineBudget.remaining().subtract(EXPENSE_AMOUNT),
+                        updatedBudget.remaining(),
+                        "Expected the remaining budget to decrease"),
+                () -> assertNumberEquals(
+                        baselineBudget.usedPercentage().add(expectedUtilizationIncrease),
+                        updatedBudget.usedPercentage(),
+                        "Expected budget utilization to increase"));
 
-            assertMoneyEquals(
-                    baselineSummary.monthlyExpenses()
-                            .add(EXPENSE_AMOUNT),
-                    updatedSummary.monthlyExpenses(),
-                    "Expected monthly expenses to increase");
+        BigDecimal used = updatedBudget.usedPercentage();
+        BigDecimal clampedUsed = used.max(BigDecimal.ZERO).min(new BigDecimal("100"));
 
-            assertMoneyEquals(
-                    baselineSummary.currentBalance()
-                            .subtract(EXPENSE_AMOUNT),
-                    updatedSummary.currentBalance(),
-                    "Expected current balance to decrease");
-
-            assertMoneyEquals(
-                    baselineBudget.spent()
-                            .add(EXPENSE_AMOUNT),
-                    updatedBudget.spent(),
-                    "Expected Travel budget spending to increase");
-
-            BigDecimal expectedUtilizationIncrease =
-                    EXPENSE_AMOUNT
-                            .multiply(new BigDecimal("100"))
-                            .divide(BUDGET_LIMIT);
-
-            assertPercentageEquals(
-                    baselineBudget.usedPercentage()
-                            .add(expectedUtilizationIncrease),
-                    updatedBudget.usedPercentage(),
-                    "Expected budget utilization to increase");
-
-            assertEquals(
-                    category + " budget utilization",
-                    category
-                            + " budget utilization",
-                    "Expected progress semantics for the category");
-
-            assertEquals(
-                    updatedBudget.usedPercentage()
-                            .toPlainString()
-                            + "% used",
-                    updatedBudget.progressValueText(),
-                    "Expected accessible progress text");
-        } finally {
-            /*
-             * A budget does not delete its transactions, so remove
-             * the transaction first and the budget second.
-             */
-            try {
-                new TransactionsPage(driver)
-                        .open()
-                        .deleteIfPresent(description);
-            } finally {
-                new BudgetsPage(driver)
-                        .open()
-                        .deleteIfPresent(
-                                category,
-                                currentPeriod);
-            }
-        }
+        assertAll(
+                () -> assertEquals(
+                        category + " budget utilization",
+                        updatedBudget.progressAccessibleName(),
+                        "Expected the progress bar to be named for its category"),
+                () -> assertEquals("0", updatedBudget.progressValueMin()),
+                () -> assertEquals("100", updatedBudget.progressValueMax()),
+                () -> assertNumberEquals(
+                        clampedUsed,
+                        new BigDecimal(updatedBudget.progressValueNow()),
+                        "Expected aria-valuenow to match the Used figure"),
+                () -> assertEquals(
+                        used.setScale(1, RoundingMode.HALF_UP).toPlainString() + "% used",
+                        updatedBudget.progressValueText(),
+                        "Expected accessible progress text"));
     }
 
     private static void assertMoneyEquals(
@@ -159,17 +147,19 @@ class BudgetDashboardIntegrationTest extends AuthenticatedTest {
         assertEquals(
                 0,
                 expected.compareTo(actual),
-                message);
+                message + ": expected " + expected + " but was " + actual);
     }
 
-    private static void assertPercentageEquals(
+    /** The card shows one decimal; aria-valuenow may carry more. */
+    private static void assertNumberEquals(
             BigDecimal expected,
             BigDecimal actual,
             String message) {
 
         assertEquals(
                 0,
-                expected.compareTo(actual),
-                message);
+                expected.setScale(1, RoundingMode.HALF_UP)
+                        .compareTo(actual.setScale(1, RoundingMode.HALF_UP)),
+                message + ": expected " + expected + " but was " + actual);
     }
 }

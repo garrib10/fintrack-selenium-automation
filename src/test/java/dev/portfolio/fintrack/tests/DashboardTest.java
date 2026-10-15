@@ -11,8 +11,9 @@ import org.junit.jupiter.api.Tag;
 
 
 @Tag("dashboard")
-@Tag("smoke")
 @Tag("regression")
+@Tag("smoke")
+@Tag("read-only")
 class DashboardTest extends AuthenticatedTest {
 
     @Test
