@@ -16,18 +16,27 @@ import org.junit.jupiter.api.Tag;
 @Tag("regression")
 class TransactionTest extends AuthenticatedTest {
 
+    private static final String INCOME_CATEGORY = "Income";
+
+    private static final String EXPENSE_CATEGORY = "Other";
+
     @Test
     void userCanCreateVerifyAndDeleteIncomeTransaction() {
-        String description = TestData.uniqueTransactionDescription("income-create");
+        String description = TestData.transactionDescription("income-create");
 
         TransactionsPage transactionsPage = new TransactionsPage(driver).open();
 
         try {
-            String category = transactionsPage.addTransaction(
+            String category = INCOME_CATEGORY;
+
+            transactionsPage.addTransaction(
                     "INCOME",
+                    category,
                     "125.50",
                     description,
                     LocalDate.now());
+
+            transactionsPage.searchByDescription(description);
 
             TransactionRow transaction = transactionsPage.transaction(description);
 
@@ -50,7 +59,8 @@ class TransactionTest extends AuthenticatedTest {
                             transaction.date().isBlank(),
                             "Expected the transaction date to be displayed"));
 
-            String confirmation = transactionsPage.deleteTransaction(description);
+            String confirmation = transactionsPage.deleteTransaction(description)
+                    .confirmation();
 
             assertAll(
                     () -> assertEquals(
@@ -67,16 +77,21 @@ class TransactionTest extends AuthenticatedTest {
 
     @Test
     void userCanCreateVerifyAndDeleteExpenseTransaction() {
-        String description = TestData.uniqueTransactionDescription("expense-create");
+        String description = TestData.transactionDescription("expense-create");
 
         TransactionsPage transactionsPage = new TransactionsPage(driver).open();
 
         try {
-            String category = transactionsPage.addTransaction(
+            String category = EXPENSE_CATEGORY;
+
+            transactionsPage.addTransaction(
                     "EXPENSE",
+                    category,
                     "42.75",
                     description,
                     LocalDate.now());
+
+            transactionsPage.searchByDescription(description);
 
             TransactionRow transaction = transactionsPage.transaction(description);
 
@@ -99,7 +114,8 @@ class TransactionTest extends AuthenticatedTest {
                             transaction.date().isBlank(),
                             "Expected the transaction date to be displayed"));
 
-            String confirmation = transactionsPage.deleteTransaction(description);
+            String confirmation = transactionsPage.deleteTransaction(description)
+                    .confirmation();
 
             assertAll(
                     () -> assertEquals(
@@ -116,18 +132,23 @@ class TransactionTest extends AuthenticatedTest {
 
     @Test
     void userCanCancelEditThenUpdateAndDeleteExpense() {
-        String originalDescription = TestData.uniqueTransactionDescription("expense-original");
+        String originalDescription = TestData.transactionDescription("expense-original");
 
-        String updatedDescription = TestData.uniqueTransactionDescription("expense-updated");
+        String updatedDescription = TestData.transactionDescription("expense-updated");
 
         TransactionsPage transactionsPage = new TransactionsPage(driver).open();
 
         try {
-            String category = transactionsPage.addTransaction(
+            String category = EXPENSE_CATEGORY;
+
+            transactionsPage.addTransaction(
                     "EXPENSE",
+                    category,
                     "60.00",
                     originalDescription,
                     LocalDate.now());
+
+            transactionsPage.searchByDescription(originalDescription);
 
             transactionsPage
                     .startEditing(originalDescription)
@@ -181,7 +202,8 @@ class TransactionTest extends AuthenticatedTest {
                                     originalDescription),
                             "Expected the original description to disappear"));
 
-            String confirmation = transactionsPage.deleteTransaction(updatedDescription);
+            String confirmation = transactionsPage.deleteTransaction(updatedDescription)
+                    .confirmation();
 
             assertAll(
                     () -> assertEquals(
@@ -200,7 +222,7 @@ class TransactionTest extends AuthenticatedTest {
 
     @Test
     void transactionDescriptionSupportsSpecialCharacters() {
-        String description = TestData.uniqueTransactionDescription("special-characters")
+        String description = TestData.transactionDescription("special-characters")
                 + " O'Brien \"QA\" & Co.";
 
         TransactionsPage transactionsPage = new TransactionsPage(driver).open();
@@ -208,9 +230,12 @@ class TransactionTest extends AuthenticatedTest {
         try {
             transactionsPage.addTransaction(
                     "EXPENSE",
+                    EXPENSE_CATEGORY,
                     "19.99",
                     description,
                     LocalDate.now());
+
+            transactionsPage.searchByDescription(description);
 
             TransactionsPage.TransactionRow transaction = transactionsPage.transaction(description);
 

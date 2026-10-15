@@ -78,7 +78,8 @@ class BudgetTest extends AuthenticatedTest {
             String confirmation =
                     budgetsPage.deleteBudget(
                             category,
-                            period);
+                            period)
+                            .confirmation();
 
             budgetExists = false;
 

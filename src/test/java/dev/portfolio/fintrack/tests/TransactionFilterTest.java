@@ -17,7 +17,7 @@ class TransactionFilterTest extends AuthenticatedTest {
     @Test
     void userCanSearchAndFilterTransactionsByType() {
         String searchKey =
-                TestData.uniqueTransactionDescription("type-filter");
+                TestData.transactionDescription("type-filter");
 
         String incomeDescription = searchKey + "-income";
         String expenseDescription = searchKey + "-expense";
@@ -28,6 +28,7 @@ class TransactionFilterTest extends AuthenticatedTest {
         try {
             transactionsPage.addTransaction(
                     "INCOME",
+                    "Income",
                     "125.00",
                     incomeDescription,
                     LocalDate.now());
@@ -36,6 +37,7 @@ class TransactionFilterTest extends AuthenticatedTest {
 
             transactionsPage.addTransaction(
                     "EXPENSE",
+                    "Other",
                     "45.00",
                     expenseDescription,
                     LocalDate.now());

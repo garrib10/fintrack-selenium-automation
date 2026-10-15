@@ -6,6 +6,7 @@ import org.openqa.selenium.WebDriver;
 public final class RegisterPage extends BasePage {
 
     private static final String PATH = "/register";
+    private static final String HEADING = "Create Account";
 
     private static final By FIRST_NAME_INPUT = By.id("firstName");
     private static final By LAST_NAME_INPUT = By.id("lastName");
@@ -16,7 +17,7 @@ public final class RegisterPage extends BasePage {
             By.cssSelector("form button[type='submit']");
 
     private static final By ERROR_ALERT =
-            By.cssSelector("[role='alert']");
+            By.cssSelector("p[role='alert']");
 
     public RegisterPage(WebDriver driver) {
         super(driver);
@@ -29,6 +30,7 @@ public final class RegisterPage extends BasePage {
 
     public RegisterPage waitUntilLoaded() {
         waitUntilPathIs(PATH);
+        waitForPage(HEADING);
         waitUntilVisible(FIRST_NAME_INPUT);
         waitUntilVisible(EMAIL_INPUT);
         return this;
@@ -47,8 +49,9 @@ public final class RegisterPage extends BasePage {
         click(SUBMIT_BUTTON);
     }
 
+    /** The visible form-level error, such as "Email is already registered". */
     public String errorMessage() {
-        return readText(ERROR_ALERT);
+        return waitForVisibleText(ERROR_ALERT);
     }
 
     public String emailValidationMessage() {

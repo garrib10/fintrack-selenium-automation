@@ -70,7 +70,7 @@ class BudgetDashboardIntegrationTest extends AuthenticatedTest {
 
             new TransactionsPage(driver)
                     .open()
-                    .addTransactionWithCategory(
+                    .addTransaction(
                             "EXPENSE",
                             category,
                             EXPENSE_AMOUNT.toPlainString(),

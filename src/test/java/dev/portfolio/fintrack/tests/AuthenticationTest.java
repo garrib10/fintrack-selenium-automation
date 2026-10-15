@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import org.junit.jupiter.api.Test;
-import dev.portfolio.fintrack.components.AppHeader;
+import dev.portfolio.fintrack.components.AppShell;
 import dev.portfolio.fintrack.config.TestConfig;
 import dev.portfolio.fintrack.core.BaseTest;
 import dev.portfolio.fintrack.pages.DashboardPage;
@@ -79,7 +79,7 @@ class AuthenticationTest extends BaseTest {
 
                 DashboardPage dashboardPage = new DashboardPage(driver).waitUntilLoaded();
 
-                AppHeader appHeader = new AppHeader(driver).waitUntilAuthenticated();
+                AppShell appShell = new AppShell(driver).waitUntilDisplayed();
 
                 assertAll(
                                 () -> assertEquals(
@@ -87,10 +87,10 @@ class AuthenticationTest extends BaseTest {
                                                 dashboardPage.currentPath(),
                                                 "Expected successful login to open the dashboard"),
                                 () -> assertTrue(
-                                                appHeader.isDisplayed(),
+                                                appShell.isDisplayed(),
                                                 "Expected authenticated navigation before logout"));
 
-                LoginPage loggedOutLoginPage = appHeader.logout();
+                LoginPage loggedOutLoginPage = appShell.accountMenu().logout();
 
                 assertAll(
                                 () -> assertEquals(

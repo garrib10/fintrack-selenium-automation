@@ -4,18 +4,13 @@ import java.math.BigDecimal;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import dev.portfolio.fintrack.components.AppShell;
 
 public final class DashboardPage extends BasePage {
 
     private static final String PATH = "/";
 
-    private static final By PRIMARY_NAVIGATION =
-            By.cssSelector(
-                    "nav[aria-label='Primary navigation']");
-
-    private static final By LOADING_MESSAGE =
-            By.xpath(
-                    "//*[normalize-space(.)='Loading dashboard...']");
+    private static final String HEADING = "Dashboard";
 
     private static final By CURRENT_BALANCE =
             By.cssSelector(
@@ -37,8 +32,16 @@ public final class DashboardPage extends BasePage {
             By.cssSelector(
                     "[data-testid='summary-monthly-expenses']");
 
+    /** The nearest section around the "Monthly Budgets" heading. */
+    private static final String MONTHLY_BUDGETS_SECTION =
+            "//h2[normalize-space(.)='Monthly Budgets']"
+                    + "/ancestor::section[1]";
+
+    private final AppShell appShell;
+
     public DashboardPage(WebDriver driver) {
         super(driver);
+        this.appShell = new AppShell(driver);
     }
 
     public DashboardPage open() {
@@ -46,13 +49,12 @@ public final class DashboardPage extends BasePage {
         return waitUntilLoaded();
     }
 
+    /** Waits through lazy page loading and "Loading dashboard..." to the summary. */
     public DashboardPage waitUntilLoaded() {
         waitUntilPathIs(PATH);
+        waitForPage(HEADING);
 
-        waitUntil(ignored ->
-                driver.findElements(LOADING_MESSAGE).isEmpty());
-
-        waitUntilVisible(PRIMARY_NAVIGATION);
+        appShell.waitUntilDisplayed();
         waitUntilVisible(CURRENT_BALANCE);
         waitUntilVisible(TOTAL_INCOME);
         waitUntilVisible(TOTAL_EXPENSES);
@@ -62,14 +64,32 @@ public final class DashboardPage extends BasePage {
         return this;
     }
 
+    /**
+     * Opens the dashboard and reports whether the session is still signed in.
+     * Returns false, leaving the browser on Login, when the session has ended.
+     */
+    public boolean openIfSignedIn() {
+        openPath(PATH);
+
+        if ("Login".equals(waitForAnyPage(HEADING, "Login"))) {
+            return false;
+        }
+
+        waitUntilLoaded();
+        return true;
+    }
+
     public DashboardPage refresh() {
         driver.navigate().refresh();
         return waitUntilLoaded();
     }
 
+    public AppShell appShell() {
+        return appShell;
+    }
+
     public boolean isPrimaryNavigationDisplayed() {
-        return waitUntilVisible(PRIMARY_NAVIGATION)
-                .isDisplayed();
+        return appShell.isDisplayed();
     }
 
     public boolean isCurrentBalanceDisplayed() {
@@ -102,9 +122,7 @@ public final class DashboardPage extends BasePage {
                 By.cssSelector("[role='progressbar']"));
 
         return new DashboardBudget(
-                card.findElement(By.tagName("h3"))
-                        .getText()
-                        .trim(),
+                normalizedText(card.findElement(By.tagName("h3"))),
                 readCurrencyFromCard(
                         card,
                         "Monthly Limit:"),
@@ -117,6 +135,11 @@ public final class DashboardPage extends BasePage {
                 readPercentageFromCard(
                         card,
                         "Used:"),
+                accessibleName(progressBar),
+                progressBar.getDomAttribute(
+                        "aria-valuemin"),
+                progressBar.getDomAttribute(
+                        "aria-valuemax"),
                 progressBar.getDomAttribute(
                         "aria-valuenow"),
                 progressBar.getDomAttribute(
@@ -139,28 +162,39 @@ public final class DashboardPage extends BasePage {
             WebElement card,
             String label) {
 
-        String value = card.findElement(By.xpath(
-                ".//dl/div[dt[normalize-space(.)="
-                        + xpathLiteral(label)
-                        + "]]/dd"))
-                .getText();
-
-        return parseCurrency(value);
+        return parseCurrency(cardValue(card, label));
     }
 
     private BigDecimal readPercentageFromCard(
             WebElement card,
             String label) {
 
-        String value = card.findElement(By.xpath(
-                ".//dl/div[dt[normalize-space(.)="
-                        + xpathLiteral(label)
-                        + "]]/dd"))
-                .getText()
-                .replace("%", "")
-                .trim();
+        return new BigDecimal(
+                cardValue(card, label)
+                        .replace("%", "")
+                        .trim());
+    }
 
-        return new BigDecimal(value);
+    private static String cardValue(
+            WebElement card,
+            String label) {
+
+        return card.findElement(By.xpath(
+                ".//dl/div[dt["
+                        + xpathTextEqualsIgnoringCase(".", label)
+                        + "]]/dd"))
+                .getText();
+    }
+
+    /** The progress bar's computed accessible name, falling back to aria-label. */
+    private static String accessibleName(WebElement element) {
+        String name = element.getAccessibleName();
+
+        if (name != null && !name.isBlank()) {
+            return name.trim();
+        }
+
+        return element.getDomAttribute("aria-label");
     }
 
     private static BigDecimal parseCurrency(String value) {
@@ -185,27 +219,10 @@ public final class DashboardPage extends BasePage {
             String category) {
 
         return By.xpath(
-                "//section[div/div/h2[normalize-space(.)="
-                        + "'Monthly Budgets']]"
+                MONTHLY_BUDGETS_SECTION
                         + "//article[.//h3[normalize-space(.)="
                         + xpathLiteral(category)
                         + "]]");
-    }
-
-    private static String xpathLiteral(String value) {
-        if (!value.contains("'")) {
-            return "'" + value + "'";
-        }
-
-        if (!value.contains("\"")) {
-            return "\"" + value + "\"";
-        }
-
-        return "concat('"
-                + value.replace(
-                        "'",
-                        "', \"'\", '")
-                + "')";
     }
 
     public record DashboardSummary(
@@ -216,12 +233,19 @@ public final class DashboardPage extends BasePage {
             BigDecimal monthlyExpenses) {
     }
 
+    /**
+     * One Monthly Budgets card. The progress values are the bar's ARIA state,
+     * for example name "Travel budget utilization", value text "20.0% used".
+     */
     public record DashboardBudget(
             String category,
             BigDecimal monthlyLimit,
             BigDecimal spent,
             BigDecimal remaining,
             BigDecimal usedPercentage,
+            String progressAccessibleName,
+            String progressValueMin,
+            String progressValueMax,
             String progressValueNow,
             String progressValueText) {
     }

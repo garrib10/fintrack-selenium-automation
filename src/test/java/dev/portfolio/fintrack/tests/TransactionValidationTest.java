@@ -16,13 +16,14 @@ class TransactionValidationTest extends AuthenticatedTest {
 
   @Test
   void amountBelowMinimumIsRejected() {
-    String description = TestData.uniqueTransactionDescription("invalid-amount");
+    String description = TestData.transactionDescription("invalid-amount");
 
     TransactionsPage transactionsPage = new TransactionsPage(driver).open();
 
     transactionsPage
         .fillNewTransactionForm(
             "EXPENSE",
+            "Other",
             "0.00",
             description,
             LocalDate.now())
@@ -48,6 +49,7 @@ class TransactionValidationTest extends AuthenticatedTest {
     transactionsPage
         .fillNewTransactionForm(
             "EXPENSE",
+            "Other",
             "25.00",
             "",
             LocalDate.now())

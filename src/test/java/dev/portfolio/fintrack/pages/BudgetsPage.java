@@ -4,59 +4,73 @@ import java.time.Month;
 import java.time.YearMonth;
 import java.time.format.TextStyle;
 import java.util.Locale;
-import org.openqa.selenium.Alert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.Select;
 
 public final class BudgetsPage extends BasePage {
 
     private static final String PATH = "/budgets";
 
-    private static final By LOADING_MESSAGE =
-            By.xpath("//*[normalize-space(.)='Loading budgets...']");
+    private static final String HEADING = "Budgets";
 
-    private static final By CATEGORY_SELECT = By.xpath(
-            "//form//label[span[normalize-space(.)='Category']]/select");
+    public static final String CREATED_MESSAGE = "Budget created.";
 
-    private static final By MONTHLY_LIMIT_INPUT = By.xpath(
-            "//form//label[span[normalize-space(.)='Monthly Limit']]/input");
+    public static final String UPDATED_MESSAGE = "Budget updated.";
 
-    private static final By FORM_MONTH_SELECT = By.xpath(
-            "//form//label[span[normalize-space(.)='Month']]/select");
+    public static final String DELETED_MESSAGE = "Budget deleted.";
 
-    private static final By FORM_YEAR_INPUT = By.xpath(
-            "//form//label[span[normalize-space(.)='Year']]/input");
+    private static final By CATEGORY_SELECT = By.id("budget-category");
+
+    private static final By NEW_CATEGORY_NAME_INPUT =
+            By.id("budget-category-new-name");
+
+    private static final By MONTHLY_LIMIT_INPUT =
+            By.id("budget-monthly-limit");
+
+    private static final By FORM_MONTH_SELECT = By.id("budget-month");
+
+    private static final By FORM_YEAR_SELECT = By.id("budget-year");
+
+    /** Client-side category error shown under the category select. */
+    private static final By CATEGORY_ERROR = By.id("budget-category-error");
+
+    /** The create/edit form, found through its own category field. */
+    private static final String BUDGET_FORM =
+            "//form[.//*[@id='budget-category']]";
+
+    private static final By CREATE_BUTTON = By.xpath(
+            BUDGET_FORM
+                    + "//button[@type='submit'"
+                    + " and normalize-space(.)='Create budget']");
+
+    private static final By UPDATE_BUTTON = By.xpath(
+            BUDGET_FORM
+                    + "//button[@type='submit'"
+                    + " and normalize-space(.)='Update budget']");
+
+    private static final By CANCEL_EDIT_BUTTON = By.xpath(
+            BUDGET_FORM
+                    + "//button[normalize-space(.)='Cancel edit']");
+
+    /** Form-level error, such as a server-side duplicate, shown after the form. */
+    private static final By SUBMISSION_ERROR = By.xpath(
+            BUDGET_FORM + "/following-sibling::p[@role='alert']");
+
+    private static final String PERIOD_FILTER_XPATH =
+            "//*[@data-testid='budget-period-filter']";
 
     private static final By PERIOD_FILTER =
             By.cssSelector("[data-testid='budget-period-filter']");
 
+    /** The Budget period selects have no IDs; each sits in a label naming it. */
     private static final By FILTER_MONTH_SELECT = By.xpath(
-            "//*[@data-testid='budget-period-filter']"
-                    + "//label[span[normalize-space(.)='Month']]/select");
+            PERIOD_FILTER_XPATH
+                    + "//label[span[normalize-space(.)='Month']]//select");
 
     private static final By FILTER_YEAR_SELECT = By.xpath(
-            "//*[@data-testid='budget-period-filter']"
-                    + "//label[span[normalize-space(.)='Year']]/select");
-
-    private static final By CREATE_BUTTON = By.xpath(
-            "//form//button[@type='submit'"
-                    + " and normalize-space(.)='Create Budget']");
-
-    private static final By UPDATE_BUTTON = By.xpath(
-            "//form//button[@type='submit'"
-                    + " and normalize-space(.)='Update Budget']");
-
-    private static final By CANCEL_EDIT_BUTTON = By.xpath(
-            "//form//button[normalize-space(.)='Cancel Edit']");
-
-    private static final By SUBMISSION_ERROR = By.xpath(
-            "//section[form]/p[@role='alert']");
-
-    private static final By CATEGORY_ERROR = By.xpath(
-            "//*[normalize-space(.)='Please select a category.']");
+            PERIOD_FILTER_XPATH
+                    + "//label[span[normalize-space(.)='Year']]//select");
 
     public BudgetsPage(WebDriver driver) {
         super(driver);
@@ -67,11 +81,10 @@ public final class BudgetsPage extends BasePage {
         return waitUntilLoaded();
     }
 
+    /** Waits through lazy page loading and "Loading budgets for {Month Year}…". */
     public BudgetsPage waitUntilLoaded() {
         waitUntilPathIs(PATH);
-
-        waitUntil(ignored ->
-                driver.findElements(LOADING_MESSAGE).isEmpty());
+        waitForPage(HEADING);
 
         waitUntilVisible(CATEGORY_SELECT);
         waitUntilVisible(PERIOD_FILTER);
@@ -80,24 +93,17 @@ public final class BudgetsPage extends BasePage {
         return this;
     }
 
+    /** Shows the given reporting period and waits for its budgets to load. */
     public BudgetsPage selectPeriod(YearMonth period) {
-        Select monthSelect = new Select(
-                waitUntilVisible(FILTER_MONTH_SELECT));
-
-        monthSelect.selectByValue(
+        selectByValue(
+                FILTER_MONTH_SELECT,
                 Integer.toString(period.getMonthValue()));
 
-        Select yearSelect = new Select(
-                waitUntilVisible(FILTER_YEAR_SELECT));
-
-        yearSelect.selectByValue(
+        selectByValue(
+                FILTER_YEAR_SELECT,
                 Integer.toString(period.getYear()));
 
-        waitUntil(ignored ->
-                selectedValue(FILTER_MONTH_SELECT).equals(
-                        Integer.toString(period.getMonthValue()))
-                        && selectedValue(FILTER_YEAR_SELECT).equals(
-                        Integer.toString(period.getYear())));
+        waitUntilPeriodShown(period);
 
         return this;
     }
@@ -107,22 +113,8 @@ public final class BudgetsPage extends BasePage {
             String monthlyLimit,
             YearMonth period) {
 
-        Select categorySelect = new Select(
-                waitUntilVisible(CATEGORY_SELECT));
-
-        categorySelect.selectByVisibleText(category);
-
-        enterText(MONTHLY_LIMIT_INPUT, monthlyLimit);
-
-        Select monthSelect = new Select(
-                waitUntilVisible(FORM_MONTH_SELECT));
-
-        monthSelect.selectByValue(
-                Integer.toString(period.getMonthValue()));
-
-        enterText(
-                FORM_YEAR_INPUT,
-                Integer.toString(period.getYear()));
+        selectCategory(category);
+        fillLimitAndPeriod(monthlyLimit, period);
 
         return this;
     }
@@ -131,22 +123,24 @@ public final class BudgetsPage extends BasePage {
             String monthlyLimit,
             YearMonth period) {
 
-        Select categorySelect = new Select(
-                waitUntilVisible(CATEGORY_SELECT));
+        selectByValue(CATEGORY_SELECT, "");
+        fillLimitAndPeriod(monthlyLimit, period);
 
-        categorySelect.selectByValue("");
+        return this;
+    }
 
-        enterText(MONTHLY_LIMIT_INPUT, monthlyLimit);
+    /** Fills the form with a new custom category created inline. */
+    public BudgetsPage fillBudgetFormWithNewCategory(
+            String newCategoryName,
+            String monthlyLimit,
+            YearMonth period) {
 
-        Select monthSelect = new Select(
-                waitUntilVisible(FORM_MONTH_SELECT));
+        selectByVisibleText(
+                CATEGORY_SELECT,
+                TransactionsPage.CREATE_CUSTOM_CATEGORY_OPTION);
 
-        monthSelect.selectByValue(
-                Integer.toString(period.getMonthValue()));
-
-        enterText(
-                FORM_YEAR_INPUT,
-                Integer.toString(period.getYear()));
+        enterText(NEW_CATEGORY_NAME_INPUT, newCategoryName);
+        fillLimitAndPeriod(monthlyLimit, period);
 
         return this;
     }
@@ -156,7 +150,11 @@ public final class BudgetsPage extends BasePage {
         return this;
     }
 
-    public BudgetsPage createBudget(
+    /**
+     * Creates a budget and returns the success banner text. After saving, the
+     * page shows the budget's own period.
+     */
+    public String createBudget(
             String category,
             String monthlyLimit,
             YearMonth period) {
@@ -164,16 +162,12 @@ public final class BudgetsPage extends BasePage {
         fillBudgetForm(category, monthlyLimit, period);
         submitCreate();
 
-        waitUntil(ignored ->
-                selectedValue(FILTER_MONTH_SELECT).equals(
-                        Integer.toString(period.getMonthValue()))
-                        && selectedValue(FILTER_YEAR_SELECT).equals(
-                        Integer.toString(period.getYear())));
+        String status = captureStatusMessage(CREATED_MESSAGE);
 
-        waitUntilVisible(
-                cardByCategoryAndPeriod(category, period));
+        waitUntilPeriodShown(period);
+        waitUntilVisible(cardByCategoryAndPeriod(category, period));
 
-        return this;
+        return status;
     }
 
     public BudgetCard budget(
@@ -184,10 +178,8 @@ public final class BudgetsPage extends BasePage {
                 cardByCategoryAndPeriod(category, period));
 
         return new BudgetCard(
-                card.findElement(By.tagName("h3"))
-                        .getText()
-                        .trim(),
-                readCardValue(card, "Monthly Limit:"));
+                normalizedText(card.findElement(By.tagName("h3"))),
+                readCardValue(card, "Monthly limit:"));
     }
 
     public boolean isBudgetPresent(
@@ -203,12 +195,7 @@ public final class BudgetsPage extends BasePage {
             String category,
             YearMonth period) {
 
-        WebElement card = waitUntilVisible(
-                cardByCategoryAndPeriod(category, period));
-
-        card.findElement(By.xpath(
-                        ".//button[normalize-space(.)='Edit']"))
-                .click();
+        click(cardButton(category, period, "Edit"));
 
         waitUntilClickable(UPDATE_BUTTON);
 
@@ -228,7 +215,8 @@ public final class BudgetsPage extends BasePage {
         return this;
     }
 
-    public BudgetsPage updateBudget(
+    /** Saves the open edit and returns the success banner text. */
+    public String updateBudget(
             String category,
             String monthlyLimit,
             YearMonth period) {
@@ -236,70 +224,55 @@ public final class BudgetsPage extends BasePage {
         fillBudgetForm(category, monthlyLimit, period);
         click(UPDATE_BUTTON);
 
+        String status = captureStatusMessage(UPDATED_MESSAGE);
+
         waitUntilClickable(CREATE_BUTTON);
+        waitUntilPeriodShown(period);
+        waitUntilVisible(cardByCategoryAndPeriod(category, period));
 
-        waitUntil(ignored ->
-                selectedValue(FILTER_MONTH_SELECT).equals(
-                        Integer.toString(period.getMonthValue()))
-                        && selectedValue(FILTER_YEAR_SELECT).equals(
-                        Integer.toString(period.getYear())));
-
-        waitUntilVisible(
-                cardByCategoryAndPeriod(category, period));
-
-        return this;
+        return status;
     }
 
-    public String deleteBudget(
+    /**
+     * Deletes the budget through the native confirmation ("Delete the
+     * {category} budget?") and returns the confirmation and banner texts.
+     */
+    public DeletionResult deleteBudget(
             String category,
             YearMonth period) {
 
         selectPeriod(period);
 
-        WebElement card = waitUntilVisible(
-                cardByCategoryAndPeriod(category, period));
+        String confirmation = deleteCard(category, period);
+        String status = captureStatusMessage(DELETED_MESSAGE);
 
-        card.findElement(By.xpath(
-                        ".//button[normalize-space(.)='Delete']"))
-                .click();
-
-        Alert alert = waitUntil(
-                ExpectedConditions.alertIsPresent());
-
-        String confirmationText = alert.getText();
-        alert.accept();
-
-        waitUntil(ignored ->
-                driver.findElements(
-                                cardByCategoryAndPeriod(
-                                        category,
-                                        period))
-                        .isEmpty());
-
-        return confirmationText;
+        return new DeletionResult(confirmation, status);
     }
 
-    public void deleteIfPresent(
+    /**
+     * Cleanup-safe deletion of exactly this category and period. A missing
+     * budget counts as already cleaned up. Returns whether one was deleted.
+     */
+    public boolean deleteIfPresent(
             String category,
             YearMonth period) {
 
         selectPeriod(period);
 
-        if (isBudgetPresent(category, period)) {
-            deleteBudget(category, period);
+        if (!isBudgetPresent(category, period)) {
+            return false;
         }
+
+        deleteCard(category, period);
+        return true;
     }
 
     public String submissionErrorMessage() {
-        return waitUntilVisible(SUBMISSION_ERROR)
-                .getText()
-                .trim();
+        return waitForVisibleText(SUBMISSION_ERROR);
     }
 
     public String categoryErrorMessage() {
-        return waitUntilVisible(CATEGORY_ERROR)
-                .getText()
-                .trim();
+        return waitForVisibleText(CATEGORY_ERROR);
     }
 
     public String monthlyLimitValidationMessage() {
@@ -307,58 +280,141 @@ public final class BudgetsPage extends BasePage {
                 .getDomProperty("validationMessage");
     }
 
-    private String selectedValue(By locator) {
-        return new Select(waitUntilVisible(locator))
-                .getFirstSelectedOption()
-                .getDomAttribute("value");
+    private String deleteCard(
+            String category,
+            YearMonth period) {
+
+        WebElement card = waitUntilVisible(
+                cardByCategoryAndPeriod(category, period));
+
+        String cardTestId = card.getDomAttribute("data-testid");
+
+        click(By.xpath(
+                "//article[@data-testid="
+                        + xpathLiteral(cardTestId)
+                        + "]//button[normalize-space(.)='Delete']"));
+
+        String confirmationText = acceptConfirm();
+
+        waitUntilAbsent(By.cssSelector(
+                "article[data-testid='" + cardTestId + "']"));
+
+        return confirmationText;
     }
 
-    private String readCardValue(
+    private void selectCategory(String category) {
+        if (category == null || category.isBlank()) {
+            throw new IllegalArgumentException(
+                    "A budget category must be named explicitly");
+        }
+
+        if (TransactionsPage.CREATE_CUSTOM_CATEGORY_OPTION.equals(category)) {
+            throw new IllegalArgumentException(
+                    "Use fillBudgetFormWithNewCategory to create a category");
+        }
+
+        selectByVisibleText(CATEGORY_SELECT, category);
+    }
+
+    private void fillLimitAndPeriod(
+            String monthlyLimit,
+            YearMonth period) {
+
+        enterText(MONTHLY_LIMIT_INPUT, monthlyLimit);
+
+        selectByValue(
+                FORM_MONTH_SELECT,
+                Integer.toString(period.getMonthValue()));
+
+        selectByValue(
+                FORM_YEAR_SELECT,
+                Integer.toString(period.getYear()));
+    }
+
+    /**
+     * Waits until Budget period shows {@code period} and its list has finished
+     * loading: cards for that period, or an empty state naming it ("No budgets
+     * found for …", or "No {category} budget for …" under a category filter).
+     */
+    private void waitUntilPeriodShown(YearMonth period) {
+        String month = Integer.toString(period.getMonthValue());
+        String year = Integer.toString(period.getYear());
+        String periodLabel = periodLabel(period);
+
+        By emptyState = By.xpath(
+                "//p[starts-with(normalize-space(.), 'No ')"
+                        + " and contains(normalize-space(.), "
+                        + xpathLiteral(" for " + periodLabel + ".")
+                        + ")]");
+
+        By cardsForPeriod = By.xpath(
+                "//article[starts-with(@data-testid,'budget-card-')]"
+                        + "[.//span[normalize-space(.)="
+                        + xpathLiteral(periodLabel)
+                        + "]]");
+
+        newWait()
+                .withMessage(() -> "Budgets did not finish loading "
+                        + periodLabel)
+                .until(ignored -> month.equals(selectedValue(FILTER_MONTH_SELECT))
+                        && year.equals(selectedValue(FILTER_YEAR_SELECT))
+                        && !isLoadingIndicatorDisplayed()
+                        && (!driver.findElements(emptyState).isEmpty()
+                                || !driver.findElements(cardsForPeriod).isEmpty()));
+    }
+
+    private static String readCardValue(
             WebElement card,
             String label) {
 
-        return card.findElement(By.xpath(
-                        ".//div[span[normalize-space(.)="
-                                + xpathLiteral(label)
-                                + "]]/strong"))
-                .getText()
-                .trim();
+        return normalizedText(card.findElement(By.xpath(
+                ".//div[span["
+                        + xpathTextEqualsIgnoringCase(".", label)
+                        + "]]/strong")));
+    }
+
+    private static By cardButton(
+            String category,
+            YearMonth period,
+            String buttonName) {
+
+        return By.xpath(
+                cardXPath(category, period)
+                        + "//button[normalize-space(.)="
+                        + xpathLiteral(buttonName)
+                        + "]");
     }
 
     private static By cardByCategoryAndPeriod(
             String category,
             YearMonth period) {
 
-        String periodText = Month.of(period.getMonthValue())
+        return By.xpath(cardXPath(category, period));
+    }
+
+    /** A card by its category heading and its own period line, e.g. "November 2026". */
+    private static String cardXPath(
+            String category,
+            YearMonth period) {
+
+        return "//article[starts-with("
+                + "@data-testid,'budget-card-')]"
+                + "[.//h3[normalize-space(.)="
+                + xpathLiteral(category)
+                + "]]"
+                + "[.//span[normalize-space(.)="
+                + xpathLiteral(periodLabel(period))
+                + "]]";
+    }
+
+    /** FinTrack formats periods with Intl en-US "long" month and numeric year. */
+    private static String periodLabel(YearMonth period) {
+        return Month.of(period.getMonthValue())
                 .getDisplayName(
                         TextStyle.FULL,
                         Locale.US)
                 + " "
                 + period.getYear();
-
-        return By.xpath(
-                "//article[starts-with("
-                        + "@data-testid,'budget-card-')]"
-                        + "[.//h3[normalize-space(.)="
-                        + xpathLiteral(category)
-                        + "]]"
-                        + "[.//span[normalize-space(.)="
-                        + xpathLiteral(periodText)
-                        + "]]");
-    }
-
-    private static String xpathLiteral(String value) {
-        if (!value.contains("'")) {
-            return "'" + value + "'";
-        }
-
-        if (!value.contains("\"")) {
-            return "\"" + value + "\"";
-        }
-
-        return "concat('"
-                + value.replace("'", "', \"'\", '")
-                + "')";
     }
 
     public record BudgetCard(
