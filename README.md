@@ -5,19 +5,13 @@
 ![JUnit 5.14.4](https://img.shields.io/badge/JUnit_5-5.14.4-25A162?logo=junit5&logoColor=white)
 ![Maven 3.9.16](https://img.shields.io/badge/Maven-3.9.16-C71A36?logo=apachemaven&logoColor=white)
 [![Selenium Regression](https://github.com/garrib10/fintrack-selenium-automation/actions/workflows/selenium-regression.yml/badge.svg?branch=main)](https://github.com/garrib10/fintrack-selenium-automation/actions/workflows/selenium-regression.yml)
-![Tests](https://img.shields.io/badge/Tests-22_Passing-brightgreen)
-![Version](https://img.shields.io/badge/Version-1.0.0-1D76DB)
 ![Page Object Model](https://img.shields.io/badge/Page_Object_Model-Architecture-6F42C1)
-![Status](https://img.shields.io/badge/Status-Released-brightgreen)
 
-A standalone Selenium end-to-end regression suite for the deployed FinTrack personal finance application.
+A standalone Selenium end-to-end suite for the deployed FinTrack personal finance application, refreshed for FinTrack v1.4.0.
 
-This repository demonstrates external UI automation, positive and negative testing, reusable test architecture, and regression protection for critical user workflows.
-
-> **Separate project:** FinTrack is the application under test. This repository contains only the external Selenium automation suite and does not contain the FinTrack application source code.
+> **Separate project:** FinTrack is the application under test. This repository contains only the external Selenium suite, not the FinTrack source code.
 
 - [FinTrack application repository](https://github.com/garrib10/finance-operations-dashboard)
-
 - [Deployed FinTrack application](https://finance-operations-dashboard.vercel.app/)
 
 ## Portfolio Story
@@ -26,680 +20,208 @@ This repository demonstrates external UI automation, positive and negative testi
 
 ## Tech Stack
 
-| Area                            | Technologies                              |
-| ------------------------------- | ----------------------------------------- |
-| Language                        | Java 21                                   |
-| UI automation                   | Selenium WebDriver 4.49.0                 |
-| Test framework                  | JUnit 5.14.4                              |
-| Build and dependency management | Maven 3.9.16                              |
-| Browser                         | Google Chrome in headed or headless mode  |
-| Driver management               | Selenium Manager                          |
-| Test architecture               | Page Object Model                         |
-| Test reporting                  | Surefire reports and failure artifacts    |
-| Configuration                   | Environment variables and `.env` template |
-| Continuous integration          | GitHub Actions                            |
-
-WebDriverManager is not currently required because Selenium Manager provides automatic browser-driver discovery and management.
-
-## Project Highlights
-
-- External end-to-end testing against the deployed FinTrack interface
-
-- Page Object Model with focused page and component classes
-
-- Centralized WebDriver creation and JUnit browser lifecycle management
-
-- Fresh browser session for every test
-
-- Explicit waits instead of `Thread.sleep()`
-
-- Stable IDs, semantic elements, accessible names, and `data-testid` selectors
-
-- Assertions kept in test classes rather than hidden inside Page Objects
-
-- Positive and negative authentication coverage
-
-- Parameterized protected-route testing
-
-- Login-session persistence verification after browser refresh
-
-- Logout and post-logout authorization verification
-
-- Duplicate-registration and browser-validation coverage
-
-- Authenticated income and expense transaction workflows
-
-- Transaction creation, verification, editing, cancellation, updating, and deletion
-
-- Description search and transaction-type filtering
-
-- Required-field and minimum-amount validation
-
-- Special-character boundary coverage for transaction descriptions
-
-- Budget creation, verification, editing, cancellation, updating, and deletion
-
-- Budget validation for missing categories, non-positive limits, and duplicate periods
-
-- Dashboard financial-summary verification with balance calculations
-
-- Cross-feature budget, transaction, and dashboard integration testing
-
-- Baseline-and-delta assertions that remain stable with existing account data
-
-- Dynamic budget periods and a dedicated automation category
-
-- Unique test data with automatic cleanup from the deployed application
-
-- Environment-based configuration with credentials excluded from Git
-
-- Repeatable local execution through Maven
-
-- Human-readable and machine-readable Surefire reports
-
-- Configurable headed and headless Chrome execution
-
-- JUnit tags for focused smoke, feature, integration, and regression runs
-
-- Automatic screenshot, page-source, URL, and stack-trace capture on failure
-
-- Sequential execution for workflows that share one deployed automation account
-
-- Automated headless regression checks for pull requests and `main`
-
-- Required Selenium status check before pull-request merging
-
-- Surefire reports retained as downloadable GitHub Actions artifacts
-
-## Application Under Test
-
-The Selenium suite interacts with FinTrack through its deployed frontend.
-
-```mermaid
-flowchart TD
-    A["Selenium Automation Suite"]
-    B["FinTrack Frontend - Vercel"]
-    C["FinTrack Backend - Railway"]
-    D["MySQL - Railway"]
-    A --> B
-    B --> C
-    C --> D
-```
-
-Tests interact with FinTrack through the browser rather than directly calling its backend or database.
-
-## Current Automated Scenarios
-
-### Smoke Testing
-
-- Deployed FinTrack login page loads successfully
-
-### Authentication
-
-- Registered user can log in
-
-- Authenticated session survives browser refresh
-
-- Invalid password displays the expected error
-
-- User can log out
-
-- Logged-out user cannot revisit a protected route
-
-### Protected Routes
-
-Unauthenticated users are redirected from:
-
-- Dashboard
-
-- Transactions
-
-- Budgets
-
-### Registration Validation
-
-- Duplicate email registration is rejected
-
-- Malformed email is blocked by browser-native validation
-
-Successful registration is not part of routine regression execution because FinTrack does not currently provide account deletion. This prevents automated tests from continually creating permanent users.
-
-### Transactions
-
-- Create and verify an income transaction
-
-- Create and verify an expense transaction
-
-- Cancel an edit without changing the original transaction
-
-- Update a transaction and verify the new values
-
-- Delete a transaction and verify that it is removed
-
-- Preserve apostrophes, quotation marks, and ampersands in descriptions
-
-### Transaction Search and Filtering
-
-- Search using a unique transaction description
-
-- Search using a shared partial description
-
-- Filter matching results by transaction type
-
-- Reset filters before cleanup and subsequent operations
-
-### Transaction Validation
-
-- Reject an amount below the minimum value
-
-- Reject a missing required description
-
-- Verify invalid submissions remain on the transaction page
-
-Transaction scenarios generate unique descriptions for every execution and remove successfully created records in cleanup blocks. This keeps tests independent while safely exercising the deployed application and persistent database.
-
-### Budgets
-
-- Create a budget for a dynamically selected period
-
-- Verify the exact category, month, year, and monthly limit
-
-- Cancel an edit without changing the persisted budget
-
-- Update the monthly limit and verify the new value
-
-- Delete a budget through the native confirmation dialog
-
-- Verify the deleted budget is removed
-
-### Budget Validation
-
-- Reject a budget without a selected category
-
-- Reject a non-positive monthly limit through browser-native validation
-
-- Reject a duplicate category, month, and year combination
-
-- Verify the exact duplicate-budget business error
-
-### Dashboard
-
-- Verify all five financial-summary values load
-
-- Verify current balance equals total income minus total expenses
-
-- Verify monthly income and expenses are non-negative
-
-- Create a current-month budget and matching expense
-
-- Verify total expenses, monthly expenses, and current balance change by the expected amount
-
-- Verify matching budget spending and utilization change
-
-- Verify accessible budget-progress text
-
-The integration workflow records dashboard and budget baselines before creating its expense. Assertions compare expected deltas instead of assuming an empty account. Cleanup removes the transaction before removing its budget.
-
-## Testing and Quality
-
-| Test area                 |                                        Current result |
-| ------------------------- | ----------------------------------------------------: |
-| Availability smoke        |                                        1 passing test |
-| Authentication            |                                       3 passing tests |
-| Protected routes          |                    3 passing parameterized executions |
-| Registration validation   |                                       2 passing tests |
-| Transaction workflows     |                                       4 passing tests |
-| Transaction filtering     |                                        1 passing test |
-| Transaction validation    |                                       2 passing tests |
-| Budget workflows          |                                        1 passing test |
-| Budget validation         |                                       3 passing tests |
-| Dashboard summary         |                                        1 passing test |
-| Cross-feature integration |                                        1 passing test |
-| **Total**                 | **22 passing test executions across 11 test classes** |
-
-The `smoke` tag selects three critical checks covering application availability, successful authentication, and dashboard loading. Tagged selections overlap the feature totals above and do not increase the 22-test regression count.
-
-The suite currently verifies:
-
-- Application availability through the UI
-
-- Successful and unsuccessful authentication
-
-- JWT-backed session persistence after refresh
-
-- Logout behavior
-
-- Protected-route enforcement
-
-- Duplicate-email handling
-
-- Browser-native form validation
-
-- Income and expense transaction persistence
-
-- Transaction editing, cancellation, updating, and deletion
-
-- Description search and transaction-type filtering
-
-- Transaction form validation and special-character handling
-
-- Budget persistence, editing, cancellation, updating, and deletion
-
-- Budget field and duplicate-period validation
-
-- Dashboard financial-summary consistency
-
-- Expense effects across dashboard totals and budget utilization
-
-- Accessible budget-progress values
-
-- Baseline-and-delta assertions against persistent deployed data
-
-- Transaction-first and budget-second cleanup
-
-- Unique test-data generation and post-test cleanup
-
-- Browser setup and teardown
-
-- Environment-based credential management
-
-Run the complete suite:
+| Area                   | Technologies                                         |
+| ---------------------- | ---------------------------------------------------- |
+| Language               | Java 21                                              |
+| UI automation          | Selenium WebDriver 4.49.0                            |
+| Test framework         | JUnit 5.14.4                                         |
+| Build                  | Maven 3.9 or later                                   |
+| Browser                | Google Chrome, headed or headless, fixed to `en-US`  |
+| Driver management      | Selenium Manager                                     |
+| Test architecture      | Page Object Model with application-shell components  |
+| Reporting              | Surefire reports and automatic failure evidence      |
+| Configuration          | Environment variables and a `.env` template          |
+| Continuous integration | GitHub Actions                                       |
+
+## What the Suite Covers
+
+Every browser test class is tagged either `read-only` (never changes application data) or `mutating` (creates and deletes its own records). A unit test enforces this so CI can rely on it.
+
+| Test class                       | Journey                                                                                                     | Data      | Tags                                    |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------- | --------------------------------------- |
+| `FinTrackSmokeTest`              | The deployed Login page loads                                                                               | Read-only | `smoke`                                 |
+| `AuthenticationTest`             | Login, refresh, account-menu logout, protected-route redirect and return; invalid credentials               | Read-only | `smoke`, `authentication`               |
+| `ProtectedRouteTest`             | Signed-out visits to `/`, `/transactions`, `/budgets`, `/categories` redirect to Login                      | Read-only | `smoke`, `authentication`               |
+| `DashboardTest`                  | Dashboard loads; balance equals income minus expenses                                                       | Read-only | `smoke`, `dashboard`                    |
+| `RegistrationTest`               | Registering an existing email is rejected                                                                   | Read-only | `authentication`                        |
+| `TransactionTest`                | Create, edit and delete one transaction with special characters                                             | Mutating  | `transactions`                          |
+| `TransactionFilterTest`          | Search, Income filter, and Reset against two run-owned records                                              | Mutating  | `transactions`                          |
+| `BudgetTest`                     | Create, edit and delete a budget in the reserved CRUD month                                                 | Mutating  | `budgets`                               |
+| `BudgetDashboardIntegrationTest` | A current-month expense moves Dashboard totals and budget progress                                          | Mutating  | `budgets`, `dashboard`, `integration`   |
+| `CustomCategoryTest`             | Inline custom category, in-use delete protection, Categories-to-Transactions link, reload, deletion         | Mutating  | `categories`, `transactions`            |
+| `BudgetValidationTest`           | The server rejects a duplicate budget for the same month                                                    | Mutating  | `staging-only` (excluded by default)    |
+
+Browser-free `unit` tests cover configuration parsing, staging access, run IDs, the cleanup registry, XPath escaping, displayed-value parsing, and the tag policy.
+
+### Smoke versus regression
+
+| Selection                    | Command                                                                                   | Contents (approximate, as of this refresh)        |
+| ---------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| Smoke (read-only)            | `mvn test -Dgroups='smoke\|unit' -DexcludedGroups='staging-only,maintenance,profile-photo,mutating'` | About 8 browser executions plus the unit tests |
+| Default regression           | `mvn test`                                                                                | About 14 browser executions plus the unit tests   |
+| Staging-only duplicate check | `mvn test -Dtest=BudgetValidationTest -DexcludedGroups=none` (staging or local only)      | 1 browser execution                               |
+
+`pom.xml` excludes `staging-only`, `maintenance` and `profile-photo` from every run unless `-DexcludedGroups` overrides it. Selection never depends on the `regression` tag. Counts change as coverage changes; the Surefire reports for a run are the source of truth.
+
+## Environments and Safety
+
+| Category                   | Scenarios                                                                       | Where it may run                                   |
+| -------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Production-safe            | Everything tagged `read-only`                                                   | Production, staging, local                         |
+| Dedicated account required | Everything tagged `mutating` except staging-only                                | Staging preferred; production only with approval   |
+| Staging or local only      | `BudgetValidationTest`; successful registration (not automated)                 | Staging, local                                     |
+| Manual only                | Password change, session-restoration failure, token expiry and cross-tab        | Not automated                                      |
+
+Safety rules built into the suite:
+
+- `FINTRACK_TARGET_ENV` must be set to `production`, `staging` or `local`. There is no default, so production is never selected by accident.
+- The base URL must agree with the target: `local` must be localhost, `staging` cannot be the production host, and URLs with credentials, query strings or fragments are rejected. Errors name the variable, never its value.
+- Only the target environment and host are logged. Credentials, tokens and staging-access secrets are never printed.
+- Staging and production use different automation accounts (`FINTRACK_STAGING_*` and `FINTRACK_TEST_*`), with no fallback between them.
+- Tests run serially. The suite shares one automation account per environment, so parallel execution would need one account per worker.
+- `BudgetValidationTest` also skips itself if pointed at production.
+
+## Configuration
+
+Copy the template and fill it in. The real `.env` is excluded from Git.
 
 ```bash
+cp .env.example .env
+set -a; source .env; set +a
+```
+
+| Variable                                               | Required                         | Purpose                                                                 |
+| ------------------------------------------------------ | -------------------------------- | ----------------------------------------------------------------------- |
+| `FINTRACK_TARGET_ENV`                                  | Always                           | `production`, `staging` or `local`                                      |
+| `FINTRACK_BASE_URL`                                    | Staging and local                | Frontend URL; production defaults to the deployed URL                   |
+| `FINTRACK_TEST_EMAIL` / `FINTRACK_TEST_PASSWORD`       | Production and local             | Dedicated automation account                                            |
+| `FINTRACK_STAGING_EMAIL` / `FINTRACK_STAGING_PASSWORD` | Staging                          | Separate staging automation account                                     |
+| `FINTRACK_VERCEL_BYPASS_SECRET`                        | Protected staging (preferred)    | Vercel Protection Bypass for Automation secret                          |
+| `FINTRACK_VERCEL_SHARE_TOKEN`                          | Protected staging (alternative)  | A Vercel share link or its `_vercel_share` token; may expire            |
+| `FINTRACK_TEST_BUDGET_CATEGORY`                        | Mutating budget tests            | Built-in category reserved for automation budgets (`Travel`)            |
+| `FINTRACK_HEADLESS` or `-Dheadless=true`               | Optional                         | Headless Chrome at 1440×1000; otherwise a maximized window              |
+| `FINTRACK_ENABLE_PROFILE_PHOTO`                        | Optional                         | Reserved for the optional profile-photo round trip (see below)          |
+
+Staging access tokens are refused for any target other than staging. The browser uses the token once to obtain Vercel's access cookie, then leaves that URL, so the token never appears in later URLs, screenshots or page sources.
+
+## Test Data and Cleanup
+
+- **Run-specific names.** Each JVM run has one ID such as `202610151530-k3x9`. Transactions are named `selenium-<runId>-<scenario>` and custom categories `Sel <runId>`, so cleanup only ever touches records the current run created.
+- **Cleanup registry.** Tests register cleanup just before saving each record. Cleanup runs after failure evidence is captured and before the browser quits. Order: transactions, then budgets, then categories, newest first within each. Each step reopens its page, runs independently, and treats an already-missing record as cleaned. A failure is reported without hiding the test's own failure.
+- **Renames and deletions.** A renamed transaction is tracked under both names until the rename is confirmed. A record the test deleted itself has its cleanup cancelled.
+- **Built-in categories** are never edited or deleted.
+
+### Travel budget reservations
+
+All automation budgets use the reserved category (`FINTRACK_TEST_BUDGET_CATEGORY`, `Travel`) in fixed months:
+
+| Month            | Used by                                      |
+| ---------------- | -------------------------------------------- |
+| Current month    | `BudgetDashboardIntegrationTest`             |
+| Next month       | `BudgetTest`                                 |
+| Month after next | `BudgetValidationTest` (staging only)        |
+
+A budget cannot carry the run ID, so each budget test first checks that its month has no Travel budget. If one exists, the test fails and leaves it untouched: remove it by hand and rerun. Avoid creating Travel budgets in these months on the automation account.
+
+### Optional profile photo
+
+The `profile-photo` tag is reserved for an optional upload, reload, remove and initials-fallback round trip. It is excluded by default, gated by `FINTRACK_ENABLE_PROFILE_PHOTO=true`, and best run on staging. Its image is generated at runtime (a small solid-color PNG written to a temporary directory) rather than committed, so the repository holds no binary fixtures, personal images or metadata. That round trip is not yet part of the suite.
+
+## Running the Tests Locally
+
+Prerequisites: Java 21, Maven 3.9 or later, Google Chrome.
+
+```bash
+set -a; source .env; set +a
+
+# Read-only smoke coverage
+mvn test -Dgroups='smoke|unit' \
+  -DexcludedGroups='staging-only,maintenance,profile-photo,mutating'
+
+# Full default regression (creates and deletes test data)
 mvn clean test
+
+# Headless
+mvn clean test -Dheadless=true
+
+# One class
+mvn test -Dtest=TransactionTest
+
+# Browser-free unit tests only
+mvn test -Dgroups=unit
+
+# Staging-only duplicate-budget check
+FINTRACK_TARGET_ENV=staging mvn test -Dtest=BudgetValidationTest -DexcludedGroups=none
 ```
 
-Run one test class:
+Before running anything tagged `mutating` against production, confirm the target and the dedicated account.
 
-```bash
-mvn -Dtest=AuthenticationTest test
-```
+## Continuous Integration
 
-Surefire reports are generated at:
+`.github/workflows/selenium-regression.yml` runs the job **Selenium regression suite**, which is the required status check for pull requests into `main`.
 
-```text
-target/surefire-reports
-```
+| Trigger                    | Suite                         | Target                          |
+| -------------------------- | ----------------------------- | ------------------------------- |
+| Pull request into `main`   | Smoke (read-only)             | Production                      |
+| Push to `main`             | Smoke (read-only)             | Production                      |
+| Manual (`workflow_dispatch`) | Smoke or regression (chosen) | Staging (default) or production |
 
-The report directory contains:
+- Automatic runs never change application data. There is no scheduled run.
+- A manual production regression also requires typing `mutate-production` in the confirmation input; otherwise the job stops before testing.
+- One concurrency group, `fintrack-automation-account`, serializes every run, and runs in progress are never cancelled, since cancelling would skip cleanup.
+- The FinTrack health endpoint (`<base URL>/api/health`) is checked with retries before Selenium starts, which also absorbs backend cold starts.
+- The job logs only the selected suite, target and host.
+- Surefire reports are always uploaded; screenshots, page sources and failure details are uploaded when a run fails. Both are kept for 7 days.
+- Pull requests from forks receive no secrets, so the configuration check fails before any test runs.
 
-- Plain-text developer summaries
+Repository configuration:
 
-- XML reports suitable for CI processing and artifact upload
+| Name                            | Kind     | Used for                     |
+| ------------------------------- | -------- | ---------------------------- |
+| `FINTRACK_BASE_URL`             | Variable | Production frontend URL      |
+| `FINTRACK_STAGING_BASE_URL`     | Variable | Staging frontend URL         |
+| `FINTRACK_TEST_BUDGET_CATEGORY` | Variable | `Travel`                     |
+| `FINTRACK_ALLOW_REGISTRATION`   | Variable | `false`                      |
+| `FINTRACK_TEST_EMAIL` / `FINTRACK_TEST_PASSWORD`       | Secret | Production account |
+| `FINTRACK_STAGING_EMAIL` / `FINTRACK_STAGING_PASSWORD` | Secret | Staging account    |
+| `FINTRACK_VERCEL_BYPASS_SECRET` | Secret   | Protected staging access     |
 
-End-to-end code-coverage percentages are not reported because this suite interacts with FinTrack externally and does not instrument the application source code.
+## Test Evidence
 
-## Test Evidence and Screenshots
+When a browser test fails, `FailureEvidenceExtension` writes a screenshot, the page source, and the URL with the stack trace to `target/test-artifacts/<TestClass>/` before cleanup runs, so the evidence shows the failure rather than the cleaned-up page.
 
-The framework automatically captures diagnostic evidence whenever a test fails.
-
-Failure evidence is written to:
-
-```text
-target/test-artifacts/<TestClass>/
-```
-
-Each failed test can produce:
-
-- A PNG browser screenshot
-
-- An HTML page-source snapshot
-
-- A text file containing the test name, current URL, and failure stack trace
-
-These generated files are excluded from Git. They support local diagnosis and are uploaded by GitHub Actions when a CI test fails.
-
-### Successful GitHub Actions Regression
-
-The GitHub Actions workflow runs the complete Selenium regression suite in headless Chrome and uploads the Surefire results after every run.
+Surefire reports are written to `target/surefire-reports`. Both directories are generated, excluded from Git, and removed by `mvn clean`.
 
 ![Successful GitHub Actions Selenium regression](docs/images/selenium-regression-success.png)
-
-The workflow summary, downloadable Surefire reports, and automatic failure artifacts provide repeatable test evidence without committing generated reports to the repository.
-
-### Pull Request Quality Gates
-
-The v1.0.0 release passed CodeQL security analysis and the required Selenium regression check before merging.
 
 ![Successful pull request checks](docs/images/pr-required-checks.png)
 
 ## Project Structure
 
-| Path                                              | Purpose                                                                  |
-| ------------------------------------------------- | ------------------------------------------------------------------------ |
-| `.github/workflows/selenium-regression.yml`       | Required headless regression workflow for pull requests and `main`       |
-| `.env.example`                                    | Safe template documenting required environment variables                 |
-| `pom.xml`                                         | Maven project, dependency, Java, compiler, and test-runner configuration |
-| `src/test/java/dev/portfolio/fintrack/components` | Reusable UI components shared across pages                               |
-| `src/test/java/dev/portfolio/fintrack/config`     | Environment and test configuration                                       |
-| `src/test/java/dev/portfolio/fintrack/core`       | WebDriver factory and JUnit test lifecycle                               |
-| `src/test/java/dev/portfolio/fintrack/data`       | Unique automation test-data generation                                   |
-| `src/test/java/dev/portfolio/fintrack/pages`      | Page Objects containing selectors, waits, and UI interactions            |
-| `src/test/java/dev/portfolio/fintrack/tests`      | JUnit test classes containing scenarios and assertions                   |
-| `target/surefire-reports`                         | Generated local test reports; excluded from Git                          |
-| `target/test-artifacts`                           | Generated failure screenshots and diagnostics; excluded from Git         |
-| `docs/images`                                     | Portfolio screenshots and continuous-integration evidence                |
-
-Current Java structure:
-
 ```text
 src/test/java/dev/portfolio/fintrack/
-|-- components/
-|   `-- AppHeader.java
-|-- config/
-|   `-- TestConfig.java
-|-- core/
-|   |-- AuthenticatedTest.java
-|   |-- BaseTest.java
-|   |-- DriverFactory.java
-|   `-- FailureEvidenceExtension.java
-|-- data/
-|   `-- TestData.java
-|-- pages/
-|   |-- BasePage.java
-|   |-- BudgetsPage.java
-|   |-- DashboardPage.java
-|   |-- LoginPage.java
-|   |-- RegisterPage.java
-|   `-- TransactionsPage.java
-`-- tests/
-    |-- AuthenticationTest.java
-    |-- BudgetDashboardIntegrationTest.java
-    |-- BudgetTest.java
-    |-- BudgetValidationTest.java
-    |-- DashboardTest.java
-    |-- FinTrackSmokeTest.java
-    |-- ProtectedRouteTest.java
-    |-- RegistrationTest.java
-    |-- TransactionFilterTest.java
-    |-- TransactionTest.java
-    `-- TransactionValidationTest.java
+|-- components/   AppShell (sidebar navigation), AccountMenu
+|-- config/       TestConfig, TargetEnvironment, StagingAccess
+|-- core/         BaseTest, AuthenticatedTest, DriverFactory,
+|                 CleanupRegistry, FailureEvidenceExtension
+|-- data/         TestData (run IDs and record names)
+|-- pages/        BasePage, Login, Register, Dashboard, Transactions,
+|                 Budgets, Categories, DeletionResult
+`-- tests/        Browser journeys and the tag-policy unit test
 ```
 
 ## Automation Design
 
-### Page Object Model
-
-Page Objects contain:
-
-- Element selectors
-
-- Explicit waits
-
-- Page-specific interactions
-
-- Page-state accessors
-
-Test classes contain:
-
-- Test scenarios
-
-- Expected outcomes
-
-- JUnit assertions
-
-This separation keeps tests readable while localizing UI-maintenance changes.
-
-### WebDriver Lifecycle
-
-`DriverFactory` creates Chrome in headed mode by default and supports headless execution through configuration. `BaseTest` creates a new driver before every test and closes it afterward.
-
-Each test begins with an isolated browser session and does not depend on authentication state left by another test.
-
-`FailureEvidenceExtension` runs before browser teardown when a test fails, allowing it to capture the active browser state without masking the original failure.
-
-### Test Independence
-
-Tests do not depend on execution order. Authentication tests reuse one dedicated fictional account, while permanent account creation is excluded from routine execution.
-
-Transaction tests create uniquely named records and use `finally` cleanup blocks so created data is removed even when an assertion fails. Budget tests use a dedicated configured category and dynamically selected periods to avoid modifying existing records.
-
-The dashboard integration test records existing totals and budget values before making changes. It verifies numeric deltas, removes the generated transaction first, and removes the generated budget second. Test runs are currently serial because the suite operates against one shared deployed automation account.
-
-### Explicit Waits
-
-The suite waits for observable browser conditions, including:
-
-- Expected URL paths
-
-- Visible elements
-
-- Clickable controls
-
-- Authenticated navigation
-
-- Loaded dashboard content
-
-- Transaction form resets after successful submission
-
-- Search and filter results
-
-- Transaction rows appearing or disappearing after mutations
-
-- Budget periods becoming selected
-
-- Budget cards appearing, updating, or disappearing
-
-- Dashboard summaries and budget-progress cards loading
-
-Fixed delays such as `Thread.sleep()` are not used.
-
-### Test Tags
-
-JUnit tags support focused execution without maintaining separate suites:
-
-| Tag              | Scope                                                     |
-| ---------------- | --------------------------------------------------------- |
-| `smoke`          | Availability, successful login, and dashboard loading     |
-| `authentication` | Login, logout, registration, and protected routes         |
-| `transactions`   | Transaction workflows, filtering, and validation          |
-| `budgets`        | Budget workflows, validation, and related integration     |
-| `dashboard`      | Dashboard summary and cross-feature dashboard behavior    |
-| `integration`    | Cross-feature budget, transaction, and dashboard workflow |
-| `regression`     | Complete automated regression coverage                    |
-
-The suite remains sequential because several workflows share the same deployed automation account and persistent test data.
-
-### Selector Strategy
-
-The suite prefers:
-
-1. Stable element IDs
-
-2. Released `data-testid` attributes
-
-3. Semantic HTML and accessible names
-
-4. Scoped CSS selectors
-
-5. Short, meaning-based XPath only when Selenium lacks a suitable role locator
-
-DOM-position-based selectors and long absolute XPath expressions are avoided.
-
-## Local Prerequisites
-
-- Java 21
-
-- Maven 3.9 or later
-
-- Google Chrome
-
-Verify the environment:
-
-```bash
-java -version
-
-mvn -version
-```
-
-Maven should report that it is running with Java 21.
-
-## Environment Configuration
-
-Copy the safe configuration template:
-
-```bash
-cp .env.example .env
-```
-
-Update `.env` with a dedicated fictional FinTrack automation account:
-
-```bash
-export FINTRACK_BASE_URL='https://finance-operations-dashboard.vercel.app'
-
-export FINTRACK_TEST_EMAIL='replace-with-dedicated-test-email'
-
-export FINTRACK_TEST_PASSWORD='replace-with-dedicated-test-password'
-
-export FINTRACK_ALLOW_REGISTRATION='false'
-
-export FINTRACK_TEST_BUDGET_CATEGORY='Travel'
-
-export FINTRACK_HEADLESS='false'
-```
-
-Load the values into the current terminal:
-
-```bash
-source .env
-```
-
-The real `.env` file is excluded from Git and must never be committed.
-
-## Running the Tests
-
-Run all tests from a clean build:
-
-```bash
-source .env
-
-mvn clean test
-```
-
-Run one test class:
-
-```bash
-mvn -Dtest=AuthenticationTest test
-```
-
-Run the complete suite headlessly:
-
-```bash
-mvn clean test -Dheadless=true
-```
-
-Run the tagged smoke selection headlessly:
-
-```bash
-mvn -Dgroups=smoke -Dheadless=true test
-```
-
-Run a feature tag:
-
-```bash
-mvn -Dgroups=transactions test
-
-mvn -Dgroups=budgets test
-```
-
-Run the complete regression tag:
-
-```bash
-mvn -Dgroups=regression -Dheadless=true test
-```
-
-Run the protected-route tests:
-
-```bash
-mvn -Dtest=ProtectedRouteTest test
-```
-
-Run all transaction test classes:
-
-```bash
-mvn -Dtest="Transaction*" test
-```
-
-Run all budget and dashboard test classes:
-
-```bash
-mvn -Dtest=BudgetTest,BudgetValidationTest,DashboardTest,BudgetDashboardIntegrationTest test
-```
-
-The browser runs visibly by default. The `-Dheadless=true` Maven property overrides `FINTRACK_HEADLESS` for the current command.
-
-## Continuous Integration
-
-The workflow at `.github/workflows/selenium-regression.yml` runs automatically for:
-
-- Pull requests targeting `main`
-
-- Pushes to `main`
-
-- Manually requested workflow runs
-
-The workflow:
-
-1. Checks out the repository with read-only content permissions.
-
-2. Configures Eclipse Temurin Java 21 and Maven dependency caching.
-
-3. Confirms the Java, Maven, and Chrome versions available on the runner.
-
-4. Validates that required repository secrets and variables are configured.
-
-5. Runs all 22 Selenium tests in headless Chrome.
-
-6. Uploads Maven Surefire text and XML reports after every run.
-
-7. Uploads screenshots, page source, and failure details when a test fails.
-
-Overlapping runs on the same branch are cancelled so only the newest commit continues testing. The Selenium regression job is configured as a required status check for pull requests targeting `main`.
-
-CI configuration uses GitHub repository secrets for the automation email and password. Non-sensitive values such as the base URL and budget category use repository variables. Secret values are never stored in this repository or printed by the workflow.
-
-## Test Reports
-
-Maven Surefire generates results in:
-
-```text
-target/surefire-reports
-```
-
-View the readable test summaries:
-
-```bash
-cat target/surefire-reports/*.txt
-```
-
-Generated reports are excluded from Git because they are recreated during every test run. GitHub Actions uploads the Surefire reports as downloadable workflow artifacts retained for 14 days.
-
-Failure diagnostics are generated at:
-
-```text
-target/test-artifacts
-```
-
-Both generated directories are removed by `mvn clean`.
+- **Page readiness.** Pages wait for lazy loading ("Loading page…", "Loading dashboard...", "Loading budgets for …") to finish and for the expected visible `h1`, not just a URL change.
+- **Responsive duplicates.** FinTrack renders navigation in the sidebar and in a mobile drawer. Links are found only in the visible copy, by accessible name.
+- **Status banners.** Success messages close after about three seconds; they are captured with fast polling and never waited on to close.
+- **Native confirmations** are accepted explicitly and their exact text is asserted. An abandoned dialog is dismissed, never accepted.
+- **Selectors.** Stable IDs and `data-testid` attributes first, then accessible names and scoped XPath. One shared helper escapes text containing quotes.
+- **Waits.** Explicit waits only: no fixed sleeps and no test retries.
+- **Assertions** live in test classes; page objects return state.
 
 ## Current Status
 
-Version `1.0.0` is the initial released regression suite.
+The suite has been refreshed for FinTrack v1.4.0: current page objects and application shell, consolidated authentication and transaction journeys, budget and custom-category coverage, run-specific test data with registry cleanup, explicit target selection, and read-only automatic CI.
 
-Authentication, transaction, budget, dashboard, and cross-feature integration automation are complete with 22 passing test executions across 11 test classes. The suite supports headed and headless execution, focused JUnit tags, explicit-wait-based synchronization, automatic failure evidence, GitHub Actions execution, downloadable reports, and required pull-request checks.
-
-## Future Enhancements
-
-Future Selenium releases can evolve independently from the FinTrack application version. Potential improvements include:
-
-- Additional browser coverage
-
-- Expanded regression coverage for new FinTrack workflows
-
-- Scheduled regression execution
-
-- Enhanced test-result summaries and historical reporting
-
-- Additional accessibility-focused browser checks
-
-Major architectural changes can be reserved for a future Selenium v2.0 release.
+Possible future work: mobile navigation coverage, account-preference persistence, the optional profile-photo round trip, and earlier-month Categories navigation.
