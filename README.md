@@ -6,6 +6,7 @@
 ![Maven 3.9.16](https://img.shields.io/badge/Maven-3.9.16-C71A36?logo=apachemaven&logoColor=white)
 [![Selenium Regression](https://github.com/garrib10/fintrack-selenium-automation/actions/workflows/selenium-regression.yml/badge.svg?branch=main)](https://github.com/garrib10/fintrack-selenium-automation/actions/workflows/selenium-regression.yml)
 ![Page Object Model](https://img.shields.io/badge/Page_Object_Model-Architecture-6F42C1)
+![Version](https://img.shields.io/badge/Version-1.1.0-1D76DB)
 
 A standalone Selenium end-to-end suite for the deployed FinTrack personal finance application, refreshed for FinTrack v1.4.0.
 
@@ -268,6 +269,6 @@ src/test/java/dev/portfolio/fintrack/
 
 ## Current Status
 
-The suite has been refreshed for FinTrack v1.4.0: current page objects and application shell, consolidated authentication and transaction journeys, budget and custom-category coverage, run-specific test data with registry cleanup, explicit target selection, and read-only automatic CI.
+Version `1.1.0` refreshes the suite for FinTrack v1.4.0: current page objects and application shell, consolidated authentication and transaction journeys, budget and custom-category coverage, run-specific test data with registry cleanup, explicit target selection, and read-only automatic CI.
 
 Optional scenarios cover historical Categories, mobile navigation, account preferences, the profile-photo round trip and a maintenance sweep; they never run by default.
